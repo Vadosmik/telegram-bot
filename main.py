@@ -1,15 +1,20 @@
 import telebot
+import os
+from dotenv import load_dotenv
 from telebot import types
 from collections import Counter
 
-TOKEN = '8070878657:AAHSqNPN6i_scj63kMkIi7Y-M4WC-XIRui0'
+load_dotenv()
+
+TOKEN = os.getenv("TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
 bot = telebot.TeleBot(TOKEN)
 
 user_state = {}
 user_data = {}
 votes = {}
 vote_counts = Counter()
-ADMIN_ID = 1335534848     # vadim: 1335534848   maks_2: 5639741014
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
