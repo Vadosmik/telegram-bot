@@ -26,14 +26,8 @@ def webhook():
 
 if __name__ == "__main__":
     bot.remove_webhook()
-    bot.set_webhook(url='https://your-server.com/webhook')  # Replace with your actual URL
+    bot.set_webhook(url='https://allybooksbot.onrender.com/webhook')  # Replace with your actual URL
     app.run(host='0.0.0.0', port=5000)
-
-# The following block is not necessary anymore, as webhook is already handled
-# @bot.route('/webhook')  # Remove this line
-# def handle_webhook(request):
-#     # Handle the webhook data
-#     bot.process_new_updates([types.Update.de_json(request.json)])
 
 user_state = {}
 user_data = {}
