@@ -13,7 +13,15 @@ if ADMIN_ID is None:
 ADMIN_ID = int(ADMIN_ID)
 
 bot = telebot.TeleBot(TOKEN)
+
+@bot.route('/webhook')
+def handle_webhook(request):
+  # Handle the webhook data
+  bot.process_new_updates([types.Update.de_json(request.json)])
+
+# Set webhook URL
 bot.remove_webhook()
+bot.set_webhook(url="https://allybooksbot.onrender.com/webhook")
 
 user_state = {}
 user_data = {}
