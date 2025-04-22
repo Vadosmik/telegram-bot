@@ -1,8 +1,8 @@
 import telebot
 import os
-from dotenv import load_dotenv
 from telebot import types
 from collections import Counter
+from dotenv import load_dotenv
 
 load_dotenv()
 
@@ -10,6 +10,7 @@ TOKEN = os.getenv("TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 bot = telebot.TeleBot(TOKEN)
+bot.remove_webhook()
 
 user_state = {}
 user_data = {}
