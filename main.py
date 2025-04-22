@@ -3,25 +3,37 @@ import os
 from telebot import types
 from collections import Counter
 from dotenv import load_dotenv
+from flask import Flask, request
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
 if ADMIN_ID is None:
-  raise ValueError("ADMIN_ID environment variable is not set")
+    raise ValueError("ADMIN_ID environment variable is not set")
 ADMIN_ID = int(ADMIN_ID)
 
 bot = telebot.TeleBot(TOKEN)
 
-@bot.route('/webhook')
-def handle_webhook(request):
-  # Handle the webhook data
-  bot.process_new_updates([types.Update.de_json(request.json)])
+app = Flask(__name__)
 
-# Set webhook URL
-bot.remove_webhook()
-bot.set_webhook(url="https://allybooksbot.onrender.com/webhook")
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '', 200
+
+if __name__ == "__main__":
+    bot.remove_webhook()
+    bot.set_webhook(url='https://your-server.com/webhook')  # Replace with your actual URL
+    app.run(host='0.0.0.0', port=5000)
+
+# The following block is not necessary anymore, as webhook is already handled
+# @bot.route('/webhook')  # Remove this line
+# def handle_webhook(request):
+#     # Handle the webhook data
+#     bot.process_new_updates([types.Update.de_json(request.json)])
 
 user_state = {}
 user_data = {}
