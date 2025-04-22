@@ -7,7 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+ADMIN_ID = os.getenv("ADMIN_ID")
+if ADMIN_ID is None:
+  raise ValueError("ADMIN_ID environment variable is not set")
+ADMIN_ID = int(ADMIN_ID)
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
