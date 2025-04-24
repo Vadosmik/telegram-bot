@@ -3,36 +3,26 @@ import os
 from telebot import types
 from collections import Counter
 from dotenv import load_dotenv
-from flask import Flask, request
 
 load_dotenv()
 
 TOKEN = os.getenv("TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")
-if ADMIN_ID is None:
-    raise ValueError("ADMIN_ID environment variable is not set")
-ADMIN_ID = int(ADMIN_ID)
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+maks_id = int(os.getenv("maks_id"))
 
 bot = telebot.TeleBot(TOKEN)
-
-app = Flask(__name__)
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    json_str = request.get_data().decode('UTF-8')
-    update = telebot.types.Update.de_json(json_str)
-    bot.process_new_updates([update])
-    return '', 200
-
-if __name__ == "__main__":
-    bot.remove_webhook()
-    bot.set_webhook(url='https://allybooksbot.onrender.com/webhook')  # Replace with your actual URL
-    app.run(host='0.0.0.0', port=5000)
+bot.remove_webhook()
 
 user_state = {}
 user_data = {}
+
+contest_status = False
+votes_status = False
+
 votes = {}
 vote_counts = Counter()
+
+answer_targets = {}
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -42,18 +32,31 @@ def start_handler(message):
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton('статистика голосования', callback_data='status')
     btn2 = types.InlineKeyboardButton('очистка статистики голосования', callback_data='clear')
-    btn3 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
+    btn3 = types.InlineKeyboardButton('вкл/выкл конкурса', callback_data='contest_status')
+    btn4 = types.InlineKeyboardButton('вкл/выкл голосования', callback_data='vote_status')
+    btn5 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
+    btn6 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
     markup.add(btn1)
     markup.add(btn2)
     markup.add(btn3)
+    markup.add(btn4)
+    markup.add(btn5)
+    markup.add(btn6)
     bot.send_message(chat_id, "hello admin!!", reply_markup=markup)
   else:
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
-    btn2 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
-    markup.add(btn1)
-    markup.add(btn2)
-    bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally books! 📚✨", reply_markup=markup)
+
+    if contest_status:
+      btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
+      markup.add(btn1)
+    if votes_status:
+      btn2 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
+      markup.add(btn2)
+    if contest_status == False & votes_status == False:
+      btn3 = types.InlineKeyboardButton("👋 привет", callback_data='hi')
+      markup.add(btn3)
+
+    bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally Books! 📚✨", reply_markup=markup)
 
 
 @bot.message_handler(commands=['me'])
@@ -69,6 +72,33 @@ def send_my_id(message):
     f"🆔 Telegram ID: {user_id}\n"
     f"💬 Chat ID: {chat_id}")
   
+@bot.message_handler(commands=['call_max'])
+def send_to_max_mess(message):
+  chat_id = message.chat.id
+
+  markup = types.InlineKeyboardMarkup()
+  markup.add(types.InlineKeyboardButton("👋 привет", callback_data='hi'))
+  markup.add(types.InlineKeyboardButton("XXX", callback_data='xxx'))
+
+  bot.send_message(
+    chat_id,
+    "📢 Эта функция создана для тех, кто хочет немного пошалить и позлить @una_max. "
+    "При нажатии на кнопку ему будет отправлено короткое сообщение.\n\n"
+    "🔸 Сейчас доступно только два варианта, но со временем список может расшириться.\n"
+    "🔸 В будущем эта функция исчезнет из меню — пользоваться ей придётся вручную.\n"
+    "🔸 Предложить своё сообщение можно командой /offer.\n"
+    "🔸 Всё абсолютно анонимно — никто не узнает, кто нажал.\n\n"
+    "👇 Выбери, что хочешь отправить:",
+    reply_markup=markup
+  )
+  
+@bot.message_handler(commands=['offer'])
+def send_offer(message):
+  chat_id = message.chat.id
+  user_state[chat_id] = 'awaiting_offer'
+  
+  bot.send_message(chat_id, "Введите текст, который хотите добавить.")
+
 @bot.message_handler(commands=['status'])
 def send_vote_status(message):
   chat_id = message.chat.id
@@ -85,40 +115,65 @@ def send_vote_status(message):
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
   chat_id = call.message.chat.id
+  user_id = call.from_user.id
+  global vote_counts, votes, user_state, answer_targets, votes_status, contest_status
 
   if call.data == 'start':
     start_handler(call.message)
 
   elif call.data == 'status':
     send_vote_status(call.message)
-  
+
+  elif call.data == 'vote_status':
+    votes_status = not votes_status
+
+  elif call.data == 'contest_status':
+    contest_status = not contest_status
+
+  elif call.data == 'hi':  
+    bot.send_message(maks_id, "приветик")
+
+  elif call.data == 'xxx':  
+    bot.send_message(maks_id, "я тебя трахну!!")
+
   elif call.data == 'clear':
-    votes = {}
-    vote_counts = Counter()
+    votes.clear()
+    vote_counts.clear()
 
   elif call.data == 'change_vote':
-    chat_id = call.message.chat.id
-    bot.send_message(chat_id, "Вы можете выбрать новый вариант для вашего голоса.")
+    user_id = chat_id
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+
+    if user_id in votes:
+      user_state[chat_id] = 'awaiting_vote'
+      vote_counts[votes[user_id]] -= 1
+      del votes[user_id]
+      bot.send_message(chat_id, "Вы можете выбрать новый вариант для вашего голоса.")
+    else:
+      bot.send_message(chat_id, "Вы еще не голосовали.", reply_markup=markup)
 
   elif call.data == 'remove_vote':
-    chat_id = call.message.chat.id
-    user_id = call.message.chat.id
-    
+    user_id = chat_id
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+
     if user_id in votes:
+      previous_option = votes[user_id]
+      vote_counts[previous_option] -= 1
       del votes[user_id]
-      bot.send_message(chat_id, "Ваш голос был удален. Вы можете проголосовать снова.")
-      vote_counts[votes] -= 1
+      bot.send_message(chat_id, "Ваш голос был удален. Вы можете проголосовать снова.", reply_markup=markup)
     else:
-      bot.send_message(chat_id, "Вы еще не голосовали.")
+      bot.send_message(chat_id, "Вы еще не голосовали.", reply_markup=markup)
 
   elif call.data == 'add':
     user_state[chat_id] = 'awaiting_agree'
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
     bot.send_message(chat_id,
-      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта в нашем Telegram-канале Ally books📚.\n"
+      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
       "Это отличная возможность показать свой талант! 🚀\n\n"
-      "Что нужно отправить:\n📌 Сам проект \n📸 Скриншот из монтажной/рабочей программы\n\n"
+      "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
       "Ждём твою работу — давай удивим всех вместе! ✨",
       reply_markup=markup)
 
@@ -129,10 +184,10 @@ def callback_handler(call):
   elif call.data == 'vote':
     user_state[chat_id] = 'awaiting_vote'
     bot.send_message(chat_id,
-      "Все работы участников уже размещены в нашем канале Ally books📚!\n"
+      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
       "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
       "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-      "Всего один шаг — и твой голос может решить судьбу победителя! 🏆")
+      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
     
   elif call.data.startswith('approve_'):
     user_chat_id = int(call.data.split('_')[1])
@@ -147,13 +202,24 @@ def callback_handler(call):
       ADMIN_ID,
       "✅ Заявка подтверждена!"
     )
+  elif call.data.startswith('text_'):
+    user_chat_id = int(call.data.split('_')[1])
+    user_state[user_id] = 'awaiting_text_for_answer'
+    answer_targets[user_id] = user_chat_id
+
+    bot.send_message(user_id, "Введите текст, который нужно переслать пользователю.")
 
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document'])
 def message_handler(message):
   chat_id = message.chat.id
+  user_id = 1335534848
   state = user_state.get(chat_id)
 
-  if state == 'awaiting_project':
+  if state == 'awaiting_offer':
+    bot.send_message(chat_id, "❗ функция проходит проверку.")
+    bot.send_message(user_id, message.text)
+
+  elif state == 'awaiting_project':
     if chat_id not in user_data:
       user_data[chat_id] = {}
 
@@ -200,7 +266,10 @@ def message_handler(message):
       
 
       approve_markup = types.InlineKeyboardMarkup()
-      approve_markup.add(types.InlineKeyboardButton("✅ Затвердить заявку", callback_data=f"approve_{chat_id}"))
+      btn1 = types.InlineKeyboardButton("Написать", callback_data=f"text_{chat_id}")
+      btn2 = types.InlineKeyboardButton("✅ Затвердить заявку", callback_data=f"approve_{chat_id}")
+      approve_markup.add(btn1)
+      approve_markup.add(btn2)
 
       bot.send_message(ADMIN_ID, f"📥 Новая заявка от участника: {display_name}")
 
@@ -252,7 +321,7 @@ def message_handler(message):
       btn3 = types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
       markup.add(btn1, btn2)
       markup.add(btn3)
-      bot.send_message(chat_id, "Вы уже проголосовали! Вы можете изменить или удалить ваш голос. Спасибо за участника.", reply_markup=markup)
+      bot.send_message(chat_id, "Вы уже проголосовали!\n Но вы можете изменить или удалить ваш голос.", reply_markup=markup)
       return
 
     votes[user_id] = user_vote
@@ -268,5 +337,43 @@ def message_handler(message):
     bot.send_message(chat_id, f"✅ Голос за работу №{message.text} принят! Спасибо за участие! 🗳️", reply_markup=markup)
     user_state.pop(chat_id, None)
     
+  elif state == 'awaiting_text_for_answer':
+    admin_id = message.from_user.id
+    if message.content_type == 'text':
+      user_chat_id = answer_targets.get(admin_id)
+      if user_chat_id:
+        markup = types.InlineKeyboardMarkup()
+
+        if user_chat_id == ADMIN_ID:
+          btn1 = types.InlineKeyboardButton("✉️ Написать", callback_data=f"text_{chat_id}")
+          markup.add(btn1)
+        else:
+          btn1 = types.InlineKeyboardButton("✉️ Написать", callback_data=f"text_{chat_id}")
+          btn2 = types.InlineKeyboardButton("🔄 Повторно выслать проект", callback_data='agree')
+          markup.add(btn1)
+          markup.add(btn2)
+
+        # Получаем имя пользователя, если есть username, иначе имя
+        sender = message.from_user.username
+        if sender:
+          sender_info = f"👤 @{sender}"
+        else:
+          sender_info = f"👤 {message.from_user.first_name}"
+
+        
+        if user_chat_id == ADMIN_ID:
+          bot.send_message(user_chat_id, f"{sender_info}:\n{message.text}", reply_markup=markup)
+          bot.send_message(admin_id, "Сообщение отправлено ✅")
+        else:
+          bot.send_message(user_chat_id, message.text, reply_markup=markup)
+          bot.send_message(admin_id, "Сообщение отправлено ✅")
+
+      else:
+        bot.send_message(admin_id, "Ошибка: пользователь не найден.")
+    else:
+      bot.send_message(admin_id, "Пожалуйста, отправьте обычный текст.")
+
+    user_state.pop(admin_id, None)
+    answer_targets.pop(admin_id, None)
 
 bot.polling(non_stop=True)
