@@ -43,7 +43,7 @@ contest_status = False
 votes_status = False
 
 answer_targets = {}
-max_votes = 2
+max_vote = 2
 
 @app.route('/', methods=['POST'])
 def webhook():
@@ -360,9 +360,7 @@ def message_handler(message):
   
   elif state == 'awaiting_vote':
     user_id = chat_id
-    user_vote = message.text.strip()
     username = message.from_user.username or "без username"
-    max_vote = max_votes
 
     bot.send_message(chat_id, f"test {max_vote}")
 
