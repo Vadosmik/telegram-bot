@@ -43,7 +43,7 @@ contest_status = False
 votes_status = False
 
 answer_targets = {}
-max_vote = 2
+max_votes = 2
 
 @app.route('/', methods=['POST'])
 def webhook():
@@ -268,8 +268,8 @@ def message_handler(message):
     bot.send_message(user_id, message.text)
 
   if state == 'awaiting_number_of_contestants':
-    max_vote = int(message.text)
-    bot.send_message(chat_id, f"количество участниковЖ {max_vote}")
+    max_votes = int(message.text)
+    bot.send_message(chat_id, f"количество участниковЖ {max_votes}")
 
   elif state == 'awaiting_project':
     if chat_id not in user_data:
@@ -360,6 +360,7 @@ def message_handler(message):
     user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
+    max_vote = max_votes
 
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
