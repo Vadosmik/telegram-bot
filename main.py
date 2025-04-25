@@ -17,6 +17,7 @@ bot = telebot.TeleBot(TOKEN)
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot.remove_webhook()
+time.sleep(1)
 bot.set_webhook(url=WEBHOOK_URL)
 
 user_state = {}
