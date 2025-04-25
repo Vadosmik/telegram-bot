@@ -3,8 +3,10 @@ import os
 from telebot import types
 from collections import Counter
 from dotenv import load_dotenv
+from flask import Flask, request
 
 load_dotenv()
+app = Flask(__name__)
 
 TOKEN = os.getenv("TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
@@ -12,7 +14,10 @@ maks_id = int(os.getenv("maks_id"))
 vadim_id = int(os.getenv("vadim_id"))
 
 bot = telebot.TeleBot(TOKEN)
+
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
 
 user_state = {}
 user_data = {}
@@ -24,6 +29,13 @@ votes = {}
 vote_counts = Counter()
 
 answer_targets = {}
+
+@app.route('/', methods=['POST'])
+def webhook():
+  json_str = request.get_data().decode('UTF-8')
+  update = telebot.types.Update.de_json(json_str)
+  bot.process_new_updates([update])
+  return '!', 200
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
@@ -184,7 +196,7 @@ def callback_handler(call):
   "Это отличная возможность показать свой талант! 🚀\n\n"
   "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
   "Ждём твою работу — давай удивим всех вместе! ✨\n"
-  "⬇️⬇️⬇️⬇️ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ ⬇️⬇️⬇️⬇️",
+  "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
   reply_markup=markup)
 
   elif call.data == 'agree':
@@ -386,4 +398,5 @@ def message_handler(message):
     user_state.pop(admin_id, None)
     answer_targets.pop(admin_id, None)
 
-bot.polling(non_stop=True)
+if __name__ == '__main__':
+  app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
