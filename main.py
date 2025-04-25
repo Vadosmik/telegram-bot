@@ -359,13 +359,11 @@ def message_handler(message):
       bot.send_message(chat_id, "❗ Пожалуйста, пришли скриншот или видео в виде фото, видео или документа.")
   
   elif state == 'awaiting_vote':
-
-    bot.send_message(chat_id, f"{max_vote}")
-
     user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
 
+    bot.send_message(chat_id, "qwe")
     bot.send_message(chat_id, f"{max_vote}")
 
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
