@@ -362,13 +362,19 @@ def message_handler(message):
     username = message.from_user.username or "без username"
     max_vote = max_votes
 
+    bot.send_message(chat_id, f"test {max_vote}")
+
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
       return
 
+    bot.send_message(chat_id, f"test {max_vote}")
+
     # sprawdzamy czy użytkownik już głosował
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (user_id,))
     result = cursor.fetchone()
+
+    bot.send_message(chat_id, f"test {max_vote}")
 
     if result:
       markup = types.InlineKeyboardMarkup()
@@ -380,6 +386,8 @@ def message_handler(message):
       bot.send_message(chat_id, "Вы уже проголосовали!\nНо вы можете изменить или удалить ваш голос.", reply_markup=markup)
       return
 
+    bot.send_message(chat_id, f"test {max_vote}")
+    
     # jeśli nie głosował – zapisujemy do bazy
     cursor.execute(
       "INSERT INTO votes (username, user_id, voted_for) VALUES (%s, %s, %s)",
