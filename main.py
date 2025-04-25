@@ -360,6 +360,7 @@ def message_handler(message):
   
   elif state == 'awaiting_vote':
     user_id = chat_id
+    user_vote = message.text.strip()
     username = message.from_user.username or "без username"
 
     bot.send_message(chat_id, f"test {max_vote}")
