@@ -9,6 +9,7 @@ load_dotenv()
 TOKEN = os.getenv("TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 maks_id = int(os.getenv("maks_id"))
+vadim_id = int(os.getenv("vadim_id"))
 
 bot = telebot.TeleBot(TOKEN)
 bot.remove_webhook()
@@ -28,7 +29,7 @@ answer_targets = {}
 def start_handler(message):
   chat_id = message.chat.id
 
-  if chat_id == ADMIN_ID:
+  if chat_id == ADMIN_ID or chat_id == vadim_id:
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton('статистика голосования', callback_data='status')
     btn2 = types.InlineKeyboardButton('очистка статистики голосования', callback_data='clear')
