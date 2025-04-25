@@ -269,7 +269,7 @@ def message_handler(message):
     bot.send_message(chat_id, "❗ функция проходит проверку.")
     bot.send_message(user_id, message.text)
 
-  if state == 'awaiting_number_of_contestants':
+  elif state == 'awaiting_number_of_contestants':
     max_votes = int(message.text)
     bot.send_message(chat_id, f"количество участниковЖ {max_votes}")
 
