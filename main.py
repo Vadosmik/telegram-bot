@@ -263,6 +263,8 @@ def message_handler(message):
   user_id = vadim_id
   state = user_state.get(chat_id)
 
+  bot.send_message(chat_id, f"state: {state}")
+
   if state == 'awaiting_offer':
     bot.send_message(chat_id, "❗ функция проходит проверку.")
     bot.send_message(user_id, message.text)
@@ -387,7 +389,7 @@ def message_handler(message):
       return
 
     bot.send_message(chat_id, f"test {max_vote}")
-    
+
     # jeśli nie głosował – zapisujemy do bazy
     cursor.execute(
       "INSERT INTO votes (username, user_id, voted_for) VALUES (%s, %s, %s)",
