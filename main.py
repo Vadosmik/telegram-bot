@@ -28,6 +28,11 @@ cursor.execute("""
     user_id BIGINT UNIQUE,
     voted_for TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS settings (
+  id SERIAL PRIMARY KEY,
+  key TEXT UNIQUE,
+  value TEXT
+  );
 """)
 conn.commit()
 
@@ -271,7 +276,8 @@ def message_handler(message):
 
   elif state == 'awaiting_number_of_contestants':
     max_vote = int(message.text)
-    bot.send_message(chat_id, f"количество участников: {max_vote}")
+    set_max_vote(max_vote)
+    bot.send_message(chat_id, f"Количество участников: {max_vote}")
 
   elif state == 'awaiting_project':
     if chat_id not in user_data:
@@ -362,15 +368,11 @@ def message_handler(message):
     user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
-
-    bot.send_message(chat_id, "qwe")
+    max_vote = get_max_vote()
 
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= int(max_vote)):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
       return
-
-    bot.send_message(chat_id, "qwe")
-    bot.send_message(chat_id, f"{max_vote}")
 
     # sprawdzamy czy użytkownik już głosował
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (user_id,))
@@ -441,6 +443,15 @@ def message_handler(message):
 
     user_state.pop(admin_id, None)
     answer_targets.pop(admin_id, None)
+
+def get_max_vote():
+    cursor.execute("SELECT value FROM settings WHERE key = %s", ('max_vote',))
+    result = cursor.fetchone()
+    return int(result[0]) if result else 2  # Domyślnie 2 głosy, jeśli brak w bazie
+
+def set_max_vote(value):
+    cursor.execute("INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = %s", ('max_vote', value, value))
+    conn.commit()
 
 @app.route('/', methods=['GET'])
 def index():
