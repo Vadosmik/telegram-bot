@@ -263,6 +263,8 @@ def message_handler(message):
   user_id = vadim_id
   state = user_state.get(chat_id)
 
+  bot.send_message(chat_id, f"{state}")
+  
   if state == 'awaiting_offer':
     bot.send_message(chat_id, "❗ функция проходит проверку.")
     bot.send_message(user_id, message.text)
@@ -359,7 +361,7 @@ def message_handler(message):
   elif state == 'awaiting_vote':
 
     bot.send_message(chat_id, f"{max_vote}")
-    
+
     user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
