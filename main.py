@@ -82,7 +82,7 @@ def start_handler(message):
     if votes_status:
       btn2 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
       markup.add(btn2)
-    if contest_status == False & votes_status == False:
+    if contest_status == False and votes_status == False:
       btn3 = types.InlineKeyboardButton("👋 привет", callback_data='hi')
       markup.add(btn3)
 
@@ -256,7 +256,7 @@ def callback_handler(call):
 @bot.message_handler(content_types=['text', 'photo', 'video', 'document'])
 def message_handler(message):
   chat_id = message.chat.id
-  user_id = 1335534848
+  user_id = vadim_id
   state = user_state.get(chat_id)
 
   if state == 'awaiting_offer':
