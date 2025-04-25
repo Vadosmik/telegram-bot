@@ -134,7 +134,7 @@ def callback_handler(call):
 
   elif call.data == 'contest_status':
     contest_status = not contest_status
-    if contest_status == True
+    if contest_status == True:
       bot.send_message(chat_id, "Конкурс начался, макс!!")
     else:
       bot.send_message(chat_id, "Конкурс закончился, понял?!!")
