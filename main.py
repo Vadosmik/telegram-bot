@@ -398,5 +398,9 @@ def message_handler(message):
     user_state.pop(admin_id, None)
     answer_targets.pop(admin_id, None)
 
+@app.route('/', methods=['GET'])
+def index():
+  return 'Bot is running!', 200
+
 if __name__ == '__main__':
   app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
