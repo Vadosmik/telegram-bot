@@ -43,7 +43,7 @@ contest_status = False
 votes_status = False
 
 answer_targets = {}
-max_vote = 0
+max_vote = 2
 
 @app.route('/', methods=['POST'])
 def webhook():
@@ -269,7 +269,7 @@ def message_handler(message):
 
   if state == 'awaiting_number_of_contestants':
     max_vote = int(message.text)
-    bot.send_message(chat_id, f"количество участниковЖ {message.text}")
+    bot.send_message(chat_id, f"количество участниковЖ {max_vote}")
 
   elif state == 'awaiting_project':
     if chat_id not in user_data:
