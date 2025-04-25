@@ -261,7 +261,6 @@ def callback_handler(call):
 def message_handler(message):
   chat_id = message.chat.id
   user_id = vadim_id
-  state = user_state.get(chat_id)
 
   bot.send_message(chat_id, f"state: {state}")
 
@@ -363,19 +362,13 @@ def message_handler(message):
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
 
-    bot.send_message(chat_id, f"test {max_vote}")
-
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
       return
 
-    bot.send_message(chat_id, f"test {max_vote}")
-
     # sprawdzamy czy użytkownik już głosował
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (user_id,))
     result = cursor.fetchone()
-
-    bot.send_message(chat_id, f"test {max_vote}")
 
     if result:
       markup = types.InlineKeyboardMarkup()
@@ -386,8 +379,6 @@ def message_handler(message):
       markup.add(btn3)
       bot.send_message(chat_id, "Вы уже проголосовали!\nНо вы можете изменить или удалить ваш голос.", reply_markup=markup)
       return
-
-    bot.send_message(chat_id, f"test {max_vote}")
 
     # jeśli nie głosował – zapisujemy do bazy
     cursor.execute(
