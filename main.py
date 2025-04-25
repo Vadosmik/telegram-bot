@@ -364,12 +364,12 @@ def message_handler(message):
     username = message.from_user.username or "без username"
 
     bot.send_message(chat_id, "qwe")
-    bot.send_message(chat_id, f"{max_vote}")
 
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
       return
 
+    bot.send_message(chat_id, "qwe")
     bot.send_message(chat_id, f"{max_vote}")
     # sprawdzamy czy użytkownik już głosował
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (user_id,))
