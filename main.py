@@ -127,9 +127,17 @@ def callback_handler(call):
 
   elif call.data == 'vote_status':
     votes_status = not votes_status
+    if contest_status == True
+      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
+    else:
+      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
 
   elif call.data == 'contest_status':
     contest_status = not contest_status
+    if contest_status == True
+      bot.send_message(chat_id, "Конкурс начался, макс!!")
+    else:
+      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
 
   elif call.data == 'hi':  
     bot.send_message(maks_id, "приветик")
