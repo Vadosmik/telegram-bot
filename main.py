@@ -42,10 +42,8 @@ user_data = {}
 contest_status = False
 votes_status = False
 
-votes = {}
-vote_counts = Counter()
-
 answer_targets = {}
+max_vote = 0
 
 @app.route('/', methods=['POST'])
 def webhook():
@@ -64,14 +62,16 @@ def start_handler(message):
     btn2 = types.InlineKeyboardButton('очистка статистики голосования', callback_data='clear')
     btn3 = types.InlineKeyboardButton('вкл/выкл конкурса', callback_data='contest_status')
     btn4 = types.InlineKeyboardButton('вкл/выкл голосования', callback_data='vote_status')
-    btn5 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
-    btn6 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
+    btn5 = types.InlineKeyboardButton('изменить кол-во конкурсантов', callback_data='number_of_contestants')
+    btn6 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
+    btn7 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
     markup.add(btn1)
     markup.add(btn2)
     markup.add(btn3)
     markup.add(btn4)
     markup.add(btn5)
     markup.add(btn6)
+    markup.add(btn7)
     bot.send_message(chat_id, "hello admin!!", reply_markup=markup)
   else:
     markup = types.InlineKeyboardMarkup()
@@ -151,13 +151,17 @@ def send_vote_status(message):
 def callback_handler(call):
   chat_id = call.message.chat.id
   user_id = call.from_user.id
-  global vote_counts, votes, user_state, answer_targets, votes_status, contest_status
+  global user_state, answer_targets, votes_status, contest_status
 
   if call.data == 'start':
     start_handler(call.message)
 
   elif call.data == 'status':
     send_vote_status(call.message)
+
+  elif call.data == 'number_of_contestants':
+    user_state[chat_id] = 'awaiting_number_of_contestants'
+    bot.send_message(chat_id, "напиши количество участников")
 
   elif call.data == 'vote_status':
     votes_status = not votes_status
@@ -263,6 +267,10 @@ def message_handler(message):
     bot.send_message(chat_id, "❗ функция проходит проверку.")
     bot.send_message(user_id, message.text)
 
+  if state == 'awaiting_number_of_contestants':
+    max_vote = int(message.text)
+    bot.send_message(chat_id, f"количество участниковЖ {message.text}")
+
   elif state == 'awaiting_project':
     if chat_id not in user_data:
       user_data[chat_id] = {}
@@ -352,7 +360,6 @@ def message_handler(message):
     user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
-    max_vote = 10
 
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
