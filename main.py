@@ -1,6 +1,7 @@
 import time
 import telebot
 import os
+import psycopg2
 from telebot import types
 from collections import Counter
 from dotenv import load_dotenv
@@ -10,11 +11,25 @@ load_dotenv()
 app = Flask(__name__)
 
 TOKEN = os.getenv("TOKEN")
+DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 maks_id = int(os.getenv("maks_id"))
 vadim_id = int(os.getenv("vadim_id"))
 
 bot = telebot.TeleBot(TOKEN)
+
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+cursor = conn.cursor()
+
+cursor.execute("""
+  CREATE TABLE IF NOT EXISTS votes (
+    id SERIAL PRIMARY KEY,
+    username TEXT,
+    user_id BIGINT UNIQUE,
+    voted_for TEXT NOT NULL
+  );
+""")
+conn.commit()
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot.remove_webhook()
@@ -118,12 +133,17 @@ def send_offer(message):
 def send_vote_status(message):
   chat_id = message.chat.id
 
-  top_votes = vote_counts.most_common(5)
-  stats_message = "Top 5 голосов:\n"
+  cursor.execute("SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY COUNT(*) DESC LIMIT 5")
+  top_votes = cursor.fetchall()
+
+  if not top_votes:
+    bot.send_message(chat_id, "Пока никто не проголосовал.")
+    return
     
+  stats_message = "Top 5 голосов:\n"
   for option, count in top_votes:
     stats_message += f"заявка №{option}: {count} голосов\n"
-    
+
   bot.send_message(chat_id, stats_message)
 
 
@@ -160,34 +180,34 @@ def callback_handler(call):
     bot.send_message(maks_id, "я тебя трахну!!")
 
   elif call.data == 'clear':
-    votes.clear()
-    vote_counts.clear()
+    cursor.execute("DELETE FROM votes")
+    conn.commit()
+    bot.send_message(chat_id, "Все голоса удалены.")
 
-  elif call.data == 'change_vote':
-    user_id = chat_id
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
 
-    if user_id in votes:
+
+
+  elif call.data == 'change_vote':
+    cursor.execute("SELECT * FROM votes WHERE user_id = %s", (chat_id,))
+    result = cursor.fetchone()
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+
+    if result:
+      cursor.execute("DELETE FROM votes WHERE user_id = %s", (chat_id,))
+      conn.commit()
       user_state[chat_id] = 'awaiting_vote'
-      vote_counts[votes[user_id]] -= 1
-      del votes[user_id]
-      bot.send_message(chat_id, "Вы можете выбрать новый вариант для вашего голоса.")
+      bot.send_message(chat_id, "Ваш предыдущий голос удалён. Пожалуйста, введите номер новой заявки.")
     else:
       bot.send_message(chat_id, "Вы еще не голосовали.", reply_markup=markup)
 
   elif call.data == 'remove_vote':
-    user_id = chat_id
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
-    if user_id in votes:
-      previous_option = votes[user_id]
-      vote_counts[previous_option] -= 1
-      del votes[user_id]
-      bot.send_message(chat_id, "Ваш голос был удален. Вы можете проголосовать снова.", reply_markup=markup)
-    else:
-      bot.send_message(chat_id, "Вы еще не голосовали.", reply_markup=markup)
+    cursor.execute("DELETE FROM votes WHERE user_id = %s", (chat_id,))
+    conn.commit()
+    bot.send_message(chat_id, "Ваш голос был удален. Вы можете проголосовать снова.")
 
   elif call.data == 'add':
     user_state[chat_id] = 'awaiting_agree'
@@ -331,26 +351,33 @@ def message_handler(message):
   elif state == 'awaiting_vote':
     user_id = chat_id
     user_vote = message.text.strip()
-
+    username = message.from_user.username or "без username"
     max_vote = 10
 
     if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
       bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
       return
 
-    if user_id in votes:
+    # sprawdzamy czy użytkownik już głosował
+    cursor.execute("SELECT * FROM votes WHERE user_id = %s", (user_id,))
+    result = cursor.fetchone()
+
+    if result:
       markup = types.InlineKeyboardMarkup()
       btn1 = types.InlineKeyboardButton("Изменить голос", callback_data='change_vote')
       btn2 = types.InlineKeyboardButton("Удалить голос", callback_data='remove_vote')
       btn3 = types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
       markup.add(btn1, btn2)
       markup.add(btn3)
-      bot.send_message(chat_id, "Вы уже проголосовали!\n Но вы можете изменить или удалить ваш голос.", reply_markup=markup)
+      bot.send_message(chat_id, "Вы уже проголосовали!\nНо вы можете изменить или удалить ваш голос.", reply_markup=markup)
       return
 
-    votes[user_id] = user_vote
-    vote_counts[user_vote] += 1
-
+    # jeśli nie głosował – zapisujemy do bazy
+    cursor.execute(
+      "INSERT INTO votes (username, user_id, voted_for) VALUES (%s, %s, %s)",
+      (username, user_id, user_vote)
+    )
+    conn.commit()
 
     markup = types.InlineKeyboardMarkup()
     btn1 = types.InlineKeyboardButton("Изменить голос", callback_data='change_vote')
@@ -358,9 +385,10 @@ def message_handler(message):
     btn3 = types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
     markup.add(btn1, btn2)
     markup.add(btn3)
-    bot.send_message(chat_id, f"✅ Голос за работу №{message.text} принят! Спасибо за участие! 🗳️", reply_markup=markup)
+
+    bot.send_message(chat_id, f"✅ Голос за работу №{user_vote} принят! Спасибо за участие! 🗳️", reply_markup=markup)
     user_state.pop(chat_id, None)
-    
+
   elif state == 'awaiting_text_for_answer':
     admin_id = message.from_user.id
     if message.content_type == 'text':
