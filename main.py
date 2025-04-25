@@ -268,8 +268,8 @@ def message_handler(message):
     bot.send_message(user_id, message.text)
 
   elif state == 'awaiting_number_of_contestants':
-    max_votes = int(message.text)
-    bot.send_message(chat_id, f"количество участниковЖ {max_votes}")
+    max_vote = int(message.text)
+    bot.send_message(chat_id, f"количество участниковЖ {max_vote}")
 
   elif state == 'awaiting_project':
     if chat_id not in user_data:
