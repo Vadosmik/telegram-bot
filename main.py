@@ -368,6 +368,63 @@ def message_handler(message):
       user_data.pop(chat_id, None)
     else:
       bot.send_message(chat_id, "❗ Пожалуйста, пришли скриншот или видео в виде фото, видео или документа.")
+
+  elif message.text == '📊 Статистика':
+    send_vote_status(message)
+    admin_panel(message)
+
+  elif message.text == '🧹 Очистить статистику':
+    cursor.execute("DELETE FROM votes")
+    conn.commit()
+    bot.send_message(chat_id, "Все голоса удалены.")
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+
+    admin_panel(message)
+
+  elif message.text == '🏁 Вкл/выкл конкурс':
+    contest_status = not contest_status
+    if contest_status:
+      bot.send_message(chat_id, "Конкурс начался, макс!!")
+    else:
+      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
+
+    admin_panel(message)
+
+  elif message.text == '🗳️ Вкл/выкл голосование':
+    votes_status = not votes_status
+    if votes_status:
+      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
+    else:
+      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
+    
+    admin_panel(message)
+
+  elif message.text == '🔢 Кол-во участников':
+    user_state[chat_id] = 'awaiting_number_of_contestants'
+    bot.send_message(chat_id, "напиши количество участников")
+
+  elif message.text == '🎨 Участвовать':
+    user_state[chat_id] = 'awaiting_agree'
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
+    bot.send_message(chat_id,
+      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
+      "Это отличная возможность показать свой талант! 🚀\n\n"
+      "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
+      "Ждём твою работу — давай удивим всех вместе! ✨\n"
+      "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
+      reply_markup=markup)
+
+  elif message.text == '🗳️ Голосовать':
+    user_state[chat_id] = 'awaiting_vote'
+    bot.send_message(chat_id,
+      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
+      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
+      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
+      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
+    
   
   elif state == 'awaiting_vote':
     user_id = chat_id
@@ -448,62 +505,6 @@ def message_handler(message):
 
     user_state.pop(admin_id, None)
     answer_targets.pop(admin_id, None)
-
-  if message.text == '📊 Статистика':
-    send_vote_status(message)
-    admin_panel(message)
-
-  elif message.text == '🧹 Очистить статистику':
-    cursor.execute("DELETE FROM votes")
-    conn.commit()
-    bot.send_message(chat_id, "Все голоса удалены.")
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
-    admin_panel(message)
-
-  elif message.text == '🏁 Вкл/выкл конкурс':
-    contest_status = not contest_status
-    if contest_status:
-      bot.send_message(chat_id, "Конкурс начался, макс!!")
-    else:
-      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
-
-    admin_panel(message)
-
-  elif message.text == '🗳️ Вкл/выкл голосование':
-    votes_status = not votes_status
-    if votes_status:
-      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
-    else:
-      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
-    
-    admin_panel(message)
-
-  elif message.text == '🔢 Кол-во участников':
-    user_state[chat_id] = 'awaiting_number_of_contestants'
-    bot.send_message(chat_id, "напиши количество участников")
-
-  elif message.text == '🎨 Участвовать':
-    user_state[chat_id] = 'awaiting_agree'
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
-    bot.send_message(chat_id,
-      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
-      "Это отличная возможность показать свой талант! 🚀\n\n"
-      "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
-      "Ждём твою работу — давай удивим всех вместе! ✨\n"
-      "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
-      reply_markup=markup)
-
-  elif message.text == '🗳️ Голосовать':
-    user_state[chat_id] = 'awaiting_vote'
-    bot.send_message(chat_id,
-      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
-      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
-      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
     
 
 
