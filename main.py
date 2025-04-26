@@ -50,6 +50,28 @@ votes_status = False
 answer_targets = {}
 max_vote = 2
 
+def admin_panel(message):
+  chat_id = message.chat.id
+  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+
+  admin_buttons = [
+    types.KeyboardButton('📊 Статистика'),
+    types.KeyboardButton('🧹 Очистить статистику'),
+    types.KeyboardButton('🏁 Вкл/выкл конкурс'),
+    types.KeyboardButton('🗳️ Вкл/выкл голосование'),
+    types.KeyboardButton('🔢 Кол-во участников'),
+    types.KeyboardButton('🎨 Участвовать'),
+    types.KeyboardButton('🗳️ Голосовать')
+  ]
+    
+  # Grupowanie przycisków
+  markup.add(*admin_buttons[:2])
+  markup.add(*admin_buttons[2:4])
+  markup.add(admin_buttons[4])
+  markup.add(admin_buttons[5], admin_buttons[6])
+
+  bot.send_message(chat_id, reply_markup=markup)
+
 @app.route('/', methods=['POST'])
 def webhook():
   json_str = request.get_data().decode('UTF-8')
@@ -62,25 +84,8 @@ def start_handler(message):
   chat_id = message.chat.id
 
   if chat_id == ADMIN_ID or chat_id == vadim_id:
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
-
-    admin_buttons = [
-      types.KeyboardButton('📊 Статистика'),
-      types.KeyboardButton('🧹 Очистить статистику'),
-      types.KeyboardButton('🏁 Вкл/выкл конкурс'),
-      types.KeyboardButton('🗳️ Вкл/выкл голосование'),
-      types.KeyboardButton('🔢 Кол-во участников'),
-      types.KeyboardButton('🎨 Участвовать'),
-      types.KeyboardButton('🗳️ Голосовать')
-    ]
-    
-    # Grupowanie przycisków
-    markup.add(*admin_buttons[:2])
-    markup.add(*admin_buttons[2:4])
-    markup.add(admin_buttons[4])
-    markup.add(admin_buttons[5], admin_buttons[6])
-
-    bot.send_message(chat_id, "Привет, админ! 👑", reply_markup=markup)
+    bot.send_message(chat_id, "Привет, админ! 👑")
+    admin_panel(message)
   else:
     markup = types.InlineKeyboardMarkup()
 
@@ -446,7 +451,7 @@ def message_handler(message):
 
   if message.text == '📊 Статистика':
     send_vote_status(message)
-    start_handler(message)
+    admin_panel(message)
 
   elif message.text == '🧹 Очистить статистику':
     cursor.execute("DELETE FROM votes")
@@ -456,7 +461,7 @@ def message_handler(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
 
-    start_handler(message)
+    admin_panel(message)
 
   elif message.text == '🏁 Вкл/выкл конкурс':
     contest_status = not contest_status
@@ -465,7 +470,7 @@ def message_handler(message):
     else:
       bot.send_message(chat_id, "Конкурс закончился, понял?!!")
 
-    start_handler(message)
+    admin_panel(message)
 
   elif message.text == '🗳️ Вкл/выкл голосование':
     votes_status = not votes_status
@@ -474,7 +479,7 @@ def message_handler(message):
     else:
       bot.send_message(chat_id, "Голосование закончилось, ок?!!")
     
-    start_handler(message)
+    admin_panel(message)
 
   elif message.text == '🔢 Кол-во участников':
     user_state[chat_id] = 'awaiting_number_of_contestants'
