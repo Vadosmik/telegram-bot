@@ -159,6 +159,7 @@ def send_vote_status(message):
 
   bot.send_message(chat_id, stats_message)
 
+## function button
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
   chat_id = call.message.chat.id
@@ -269,11 +270,13 @@ def callback_handler(call):
 
     bot.send_message(user_id, "Введите текст, который нужно переслать пользователю.")
 
-@bot.message_handler(content_types=['text', 'photo', 'video', 'document'])
+## text function
+@bot.message_handler(func=lambda message: True)
 def message_handler(message):
   chat_id = message.chat.id
   user_id = vadim_id
   state = user_state.get(chat_id)
+  global user_state, answer_targets, votes_status, contest_status
 
   ## Standart komand
   if message.text == '📊 Статистика':
