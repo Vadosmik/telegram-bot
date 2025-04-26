@@ -63,15 +63,15 @@ def start_handler(message):
   chat_id = message.chat.id
 
   if chat_id == ADMIN_ID or chat_id == vadim_id:
-    markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
 
-    btn1 = types.InlineKeyboardButton('📊 Статистика', callback_data='status')
-    btn2 = types.InlineKeyboardButton('🧹 Очистить статистику', callback_data='clear')
-    btn3 = types.InlineKeyboardButton('🏁 Вкл/выкл конкурс', callback_data='contest_status')
-    btn4 = types.InlineKeyboardButton('🗳️ Вкл/выкл голосование', callback_data='vote_status')
-    btn5 = types.InlineKeyboardButton('🔢 Кол-во участников', callback_data='number_of_contestants')
-    btn6 = types.InlineKeyboardButton('🎨 Участвовать', callback_data='add')
-    btn7 = types.InlineKeyboardButton('🗳️ Голосовать', callback_data='vote')
+    btn1 = types.KeyboardButton('📊 Статистика', callback_data='status')
+    btn2 = types.KeyboardButton('🧹 Очистить статистику', callback_data='clear')
+    btn3 = types.KeyboardButton('🏁 Вкл/выкл конкурс', callback_data='contest_status')
+    btn4 = types.KeyboardButton('🗳️ Вкл/выкл голосование', callback_data='vote_status')
+    btn5 = types.KeyboardButton('🔢 Кол-во участников', callback_data='number_of_contestants')
+    btn6 = types.KeyboardButton('🎨 Участвовать', callback_data='add')
+    btn7 = types.KeyboardButton('🗳️ Голосовать', callback_data='vote')
 
     # Grupujemy logicznie
     markup.add(btn1, btn2)
