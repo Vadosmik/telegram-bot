@@ -164,7 +164,12 @@ def handle_buttons(message):
     send_vote_status(message)
 
   elif message.text == '🧹 Очистить статистику':
+    cursor.execute("DELETE FROM votes")
+    conn.commit()
     bot.send_message(chat_id, "Все голоса удалены.")
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
 
   elif message.text == '🏁 Вкл/выкл конкурс':
     contest_status = not contest_status
@@ -213,13 +218,6 @@ def callback_handler(call):
   if call.data == 'start':
     start_handler(call.message)
 
-  elif call.data == 'status':
-    send_vote_status(call.message)
-
-  elif call.data == 'number_of_contestants':
-    user_state[chat_id] = 'awaiting_number_of_contestants'
-    bot.send_message(chat_id, "напиши количество участников")
-
   elif call.data == 'vote_status':
     votes_status = not votes_status
     if votes_status == True:
@@ -247,8 +245,6 @@ def callback_handler(call):
 
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
-
 
   elif call.data == 'change_vote':
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (chat_id,))
@@ -307,6 +303,7 @@ def callback_handler(call):
       ADMIN_ID,
       "✅ Заявка подтверждена!"
     )
+    
   elif call.data.startswith('text_'):
     user_chat_id = int(call.data.split('_')[1])
     user_state[user_id] = 'awaiting_text_for_answer'
