@@ -275,15 +275,18 @@ def message_handler(message):
   user_id = vadim_id
   state = user_state.get(chat_id)
 
+  # == Ожидание оффера ==
   if state == 'awaiting_offer':
-    bot.send_message(chat_id, "❗ функция проходит проверку.")
+    bot.send_message(chat_id, "❗ Функция проходит проверку.")
     bot.send_message(user_id, message.text)
 
+  # == Ожидание ввода количества участников ==
   elif state == 'awaiting_number_of_contestants':
     max_vote = int(message.text)
     set_max_vote(max_vote)
     bot.send_message(chat_id, f"Количество участников: {max_vote}")
 
+  # == Ожидание проекта ==
   elif state == 'awaiting_project':
     if chat_id not in user_data:
       user_data[chat_id] = {}
@@ -301,13 +304,16 @@ def message_handler(message):
         file_id = message.video.file_id
       else:
         file_id = message.document.file_id
+
       user_data[chat_id]['project'] = file_id
       user_data[chat_id]['type'] = message.content_type
       bot.send_message(chat_id, "✅ Проект получен!\n📸 Теперь пришли скриншот или видео из монтажной/рабочей программы")
       user_state[chat_id] = 'awaiting_screenshot'
+    
     else:
       bot.send_message(chat_id, "❗ Пожалуйста, пришли ссылку, файл, фото или видео.")
 
+  # == Ожидание скриншота ==
   elif state == 'awaiting_screenshot':
     if message.content_type in ['photo', 'video', 'document']:
       if message.content_type == 'photo':
@@ -324,51 +330,47 @@ def message_handler(message):
 
       # Отправка админу
       user = message.from_user
-      if user.username:
-        display_name = f"@{user.username}"
-      else:
-        display_name = f"{user.first_name} (id: {user.id})"
-      
+      display_name = f"@{user.username}" if user.username else f"{user.first_name} (id: {user.id})"
 
       approve_markup = types.InlineKeyboardMarkup()
-      btn1 = types.InlineKeyboardButton("Написать", callback_data=f"text_{chat_id}")
-      btn2 = types.InlineKeyboardButton("✅ Затвердить заявку", callback_data=f"approve_{chat_id}")
-      approve_markup.add(btn1)
-      approve_markup.add(btn2)
+      approve_markup.add(
+        types.InlineKeyboardButton("✉️ Написать", callback_data=f"text_{chat_id}"),
+        types.InlineKeyboardButton("✅ Затвердить заявку", callback_data=f"approve_{chat_id}")
+      )
 
       bot.send_message(ADMIN_ID, f"📥 Новая заявка от участника: {display_name}")
 
-      # Проект
-      if user_data[chat_id]['type'] == 'link':
-        bot.send_message(ADMIN_ID, f"🔗 Проект: {user_data[chat_id]['project']}")
+      # Отправка проекта
+      project = user_data[chat_id]
+      if project['type'] == 'link':
+        bot.send_message(ADMIN_ID, f"🔗 Проект: {project['project']}")
       else:
         bot.send_message(ADMIN_ID, "📌 Проект:")
-        p_type = user_data[chat_id]['type']
-        p_id = user_data[chat_id]['project']
-        if p_type == 'photo':
-          bot.send_photo(ADMIN_ID, p_id)
-        elif p_type == 'video':
-          bot.send_video(ADMIN_ID, p_id)
-        elif p_type == 'document':
-          bot.send_document(ADMIN_ID, p_id)
+        if project['type'] == 'photo':
+          bot.send_photo(ADMIN_ID, project['project'])
+        elif project['type'] == 'video':
+          bot.send_video(ADMIN_ID, project['project'])
+        elif project['type'] == 'document':
+          bot.send_document(ADMIN_ID, project['project'])
 
-      # Скриншот
+      # Отправка скриншота
       bot.send_message(ADMIN_ID, "🖼️ Скриншот:")
-      s_type = user_data[chat_id]['screenshot_type']
-      s_id = user_data[chat_id]['screenshot']
-      if s_type == 'photo':
-        bot.send_photo(ADMIN_ID, s_id, reply_markup=approve_markup)
-      elif s_type == 'video':
-        bot.send_video(ADMIN_ID, s_id, reply_markup=approve_markup)
-      elif s_type == 'document':
-        bot.send_document(ADMIN_ID, s_id, reply_markup=approve_markup)
+      screenshot = user_data[chat_id]
+      if screenshot['screenshot_type'] == 'photo':
+        bot.send_photo(ADMIN_ID, screenshot['screenshot'], reply_markup=approve_markup)
+      elif screenshot['screenshot_type'] == 'video':
+        bot.send_video(ADMIN_ID, screenshot['screenshot'], reply_markup=approve_markup)
+      elif screenshot['screenshot_type'] == 'document':
+        bot.send_document(ADMIN_ID, screenshot['screenshot'], reply_markup=approve_markup)
 
-      # Очистка
+      # Очистка данных
       user_state.pop(chat_id, None)
       user_data.pop(chat_id, None)
-    else:
-      bot.send_message(chat_id, "❗ Пожалуйста, пришли скриншот или видео в виде фото, видео или документа.")
 
+    else:
+      bot.send_message(chat_id, "❗ Пожалуйста, пришли скриншот или видео в формате фото, видео или документа.")
+
+  # == Стандартные команды ==
   elif message.text == '📊 Статистика':
     send_vote_status(message)
     admin_panel(message)
@@ -377,136 +379,90 @@ def message_handler(message):
     cursor.execute("DELETE FROM votes")
     conn.commit()
     bot.send_message(chat_id, "Все голоса удалены.")
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
     admin_panel(message)
 
   elif message.text == '🏁 Вкл/выкл конкурс':
+    global contest_status
     contest_status = not contest_status
-    if contest_status:
-      bot.send_message(chat_id, "Конкурс начался, макс!!")
-    else:
-      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
-
+    bot.send_message(chat_id, "Конкурс начался!" if contest_status else "Конкурс закончился.")
     admin_panel(message)
 
   elif message.text == '🗳️ Вкл/выкл голосование':
+    global votes_status
     votes_status = not votes_status
-    if votes_status:
-      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
-    else:
-      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
-    
+    bot.send_message(chat_id, "Голосование началось!" if votes_status else "Голосование закончилось.")
     admin_panel(message)
 
   elif message.text == '🔢 Кол-во участников':
     user_state[chat_id] = 'awaiting_number_of_contestants'
-    bot.send_message(chat_id, "напиши количество участников")
+    bot.send_message(chat_id, "Напиши количество участников:")
 
   elif message.text == '🎨 Участвовать':
     user_state[chat_id] = 'awaiting_agree'
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
     bot.send_message(chat_id,
-      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
-      "Это отличная возможность показать свой талант! 🚀\n\n"
-      "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
-      "Ждём твою работу — давай удивим всех вместе! ✨\n"
-      "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
-      reply_markup=markup)
+      "Участвуя в конкурсе, ты даёшь согласие на размещение проекта на канале Ally Books 📚.\n"
+      "📌 Нужно отправить проект и скриншот.\n\n"
+      "⬇️⬇️⬇️ НАЖМИ НА КНОПКУ ⬇️⬇️⬇️", reply_markup=markup)
 
   elif message.text == '🗳️ Голосовать':
     user_state[chat_id] = 'awaiting_vote'
     bot.send_message(chat_id,
-      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
-      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
-      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
-    
-  
+      "Работы участников размещены на канале Ally Books 📚!\n"
+      "Пришли сюда номер понравившейся работы, чтобы проголосовать.")
+
+  # == Голосование ==
   elif state == 'awaiting_vote':
-    user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
     max_vote = get_max_vote()
 
-    if not user_vote.isdigit() or not (1 <= int(user_vote) <= int(max_vote)):
-      bot.send_message(chat_id, f"Пожалуйста, выберите одну из опций от 1 до {max_vote}.")
+    if not user_vote.isdigit() or not (1 <= int(user_vote) <= max_vote):
+      bot.send_message(chat_id, f"Выбери номер от 1 до {max_vote}.")
       return
 
-    # sprawdzamy czy użytkownik już głosował
-    cursor.execute("SELECT * FROM votes WHERE user_id = %s", (user_id,))
-    result = cursor.fetchone()
-
-    if result:
+    # Проверка — голосовал ли пользователь
+    cursor.execute("SELECT * FROM votes WHERE user_id = %s", (chat_id,))
+    if cursor.fetchone():
       markup = types.InlineKeyboardMarkup()
-      btn1 = types.InlineKeyboardButton("Изменить голос", callback_data='change_vote')
-      btn2 = types.InlineKeyboardButton("Удалить голос", callback_data='remove_vote')
-      btn3 = types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
-      markup.add(btn1, btn2)
-      markup.add(btn3)
-      bot.send_message(chat_id, "Вы уже проголосовали!\nНо вы можете изменить или удалить ваш голос.", reply_markup=markup)
+      markup.add(
+        types.InlineKeyboardButton("Изменить голос", callback_data='change_vote'),
+        types.InlineKeyboardButton("Удалить голос", callback_data='remove_vote'),
+        types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
+      )
+      bot.send_message(chat_id, "Вы уже голосовали! Можете изменить или удалить голос.", reply_markup=markup)
       return
 
-    # jeśli nie głosował – zapisujemy do bazy
+    # Сохраняем новый голос
     cursor.execute(
       "INSERT INTO votes (username, user_id, voted_for) VALUES (%s, %s, %s)",
-      (username, user_id, user_vote)
+      (username, chat_id, user_vote)
     )
     conn.commit()
 
     markup = types.InlineKeyboardMarkup()
-    btn1 = types.InlineKeyboardButton("Изменить голос", callback_data='change_vote')
-    btn2 = types.InlineKeyboardButton("Удалить голос", callback_data='remove_vote')
-    btn3 = types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
-    markup.add(btn1, btn2)
-    markup.add(btn3)
-
-    bot.send_message(chat_id, f"✅ Голос за работу №{user_vote} принят! Спасибо за участие! 🗳️", reply_markup=markup)
+    markup.add(
+      types.InlineKeyboardButton("Изменить голос", callback_data='change_vote'),
+      types.InlineKeyboardButton("Удалить голос", callback_data='remove_vote'),
+      types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start')
+    )
+    bot.send_message(chat_id, f"✅ Голос за работу №{user_vote} принят! Спасибо! 🗳️", reply_markup=markup)
     user_state.pop(chat_id, None)
 
+  # == Ответ админа участнику ==
   elif state == 'awaiting_text_for_answer':
     admin_id = message.from_user.id
     if message.content_type == 'text':
       user_chat_id = answer_targets.get(admin_id)
       if user_chat_id:
         markup = types.InlineKeyboardMarkup()
-
-        if user_chat_id == ADMIN_ID:
-          btn1 = types.InlineKeyboardButton("✉️ Написать", callback_data=f"text_{chat_id}")
-          markup.add(btn1)
-        else:
-          btn1 = types.InlineKeyboardButton("✉️ Написать", callback_data=f"text_{chat_id}")
-          btn2 = types.InlineKeyboardButton("🔄 Повторно выслать проект", callback_data='agree')
-          markup.add(btn1)
-          markup.add(btn2)
-
-        # Получаем имя пользователя, если есть username, иначе имя
-        sender = message.from_user.username
-        if sender:
-          sender_info = f"👤 @{sender}"
-        else:
-          sender_info = f"👤 {message.from_user.first_name}"
-
-        
-        if user_chat_id == ADMIN_ID:
-          bot.send_message(user_chat_id, f"{sender_info}:\n{message.text}", reply_markup=markup)
-          bot.send_message(admin_id, "Сообщение отправлено ✅")
-        else:
-          bot.send_message(user_chat_id, message.text, reply_markup=markup)
-          bot.send_message(admin_id, "Сообщение отправлено ✅")
-
-      else:
-        bot.send_message(admin_id, "Ошибка: пользователь не найден.")
-    else:
-      bot.send_message(admin_id, "Пожалуйста, отправьте обычный текст.")
-
-    user_state.pop(admin_id, None)
-    answer_targets.pop(admin_id, None)
-    
-
+        markup.add(
+          types.InlineKeyboardButton("✉️ Написать", callback_data=f"text_{chat_id}"),
+          types.InlineKeyboardButton("🔄 Повторно отправить проект", callback_data='agree')
+        )
+        bot.send_message(user_chat_id, message.text, reply_markup=markup)
+        user_state.pop(chat_id, None)
 
 def get_max_vote():
     cursor.execute("SELECT value FROM settings WHERE key = %s", ('max_vote',))
