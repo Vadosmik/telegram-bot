@@ -65,20 +65,23 @@ def start_handler(message):
   if chat_id == ADMIN_ID or chat_id == vadim_id:
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
 
-    btn1 = types.KeyboardButton('📊 Статистика', callback_data='status')
-    btn2 = types.KeyboardButton('🧹 Очистить статистику', callback_data='clear')
-    btn3 = types.KeyboardButton('🏁 Вкл/выкл конкурс', callback_data='contest_status')
-    btn4 = types.KeyboardButton('🗳️ Вкл/выкл голосование', callback_data='vote_status')
-    btn5 = types.KeyboardButton('🔢 Кол-во участников', callback_data='number_of_contestants')
-    btn6 = types.KeyboardButton('🎨 Участвовать', callback_data='add')
-    btn7 = types.KeyboardButton('🗳️ Голосовать', callback_data='vote')
+    admin_buttons = [
+      types.KeyboardButton('📊 Статистика'),
+      types.KeyboardButton('🧹 Очистить статистику'),
+      types.KeyboardButton('🏁 Вкл/выкл конкурс'),
+      types.KeyboardButton('🗳️ Вкл/выкл голосование'),
+      types.KeyboardButton('🔢 Кол-во участников'),
+      types.KeyboardButton('🎨 Участвовать'),
+      types.KeyboardButton('🗳️ Голосовать')
+    ]
+    
+    # Grupowanie przycisków
+    markup.add(*admin_buttons[:2])
+    markup.add(*admin_buttons[2:4])
+    markup.add(admin_buttons[4])
+    markup.add(admin_buttons[5], admin_buttons[6])
 
-    # Grupujemy logicznie
-    markup.add(btn1, btn2)
-    markup.add(btn3, btn4)
-    markup.add(btn5)
-    markup.add(btn6, btn7)
-    bot.send_message(chat_id, "hello admin!!", reply_markup=markup)
+    bot.send_message(chat_id, "Привет, админ! 👑", reply_markup=markup)
   else:
     markup = types.InlineKeyboardMarkup()
 
