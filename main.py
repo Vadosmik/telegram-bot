@@ -444,8 +444,6 @@ def message_handler(message):
     user_state.pop(admin_id, None)
     answer_targets.pop(admin_id, None)
 
-  global user_state, answer_targets, votes_status, contest_status
-
   if message.text == '📊 Статистика':
     send_vote_status(message)
     start_handler(message)
