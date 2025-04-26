@@ -3,6 +3,7 @@ import telebot
 import os
 import psycopg2
 from telebot import types
+from telebot.types import ReplyKeyboardMarkup
 from collections import Counter
 from dotenv import load_dotenv
 from flask import Flask, request
@@ -62,7 +63,7 @@ def start_handler(message):
   chat_id = message.chat.id
 
   if chat_id == ADMIN_ID or chat_id == vadim_id:
-    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup = ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
 
     btn1 = types.InlineKeyboardButton('📊 Статистика', callback_data='status')
     btn2 = types.InlineKeyboardButton('🧹 Очистить статистику', callback_data='clear')
