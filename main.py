@@ -326,7 +326,7 @@ def message_handler(message):
       "Ждём твою работу — давай удивим всех вместе! ✨\n"
       "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
       reply_markup=markup)
-
+    
   elif message.text == '🗳️ Голосовать':
     user_state[chat_id] = 'awaiting_vote'
     bot.send_message(chat_id,
@@ -381,6 +381,7 @@ def message_handler(message):
     max_vote = int(message.text)
     set_max_vote(max_vote)
     bot.send_message(chat_id, f"Количество участников: {max_vote}")
+    admin_panel(message)
 
   elif state == 'awaiting_project':
     if chat_id not in user_data:
