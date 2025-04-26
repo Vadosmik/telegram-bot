@@ -3,7 +3,6 @@ import telebot
 import os
 import psycopg2
 from telebot import types
-from telebot.types import ReplyKeyboardMarkup
 from collections import Counter
 from dotenv import load_dotenv
 from flask import Flask, request
@@ -162,6 +161,7 @@ def handle_buttons(message):
 
   if message.text == '📊 Статистика':
     send_vote_status(message)
+    start_handler(message)
 
   elif message.text == '🧹 Очистить статистику':
     cursor.execute("DELETE FROM votes")
@@ -171,6 +171,8 @@ def handle_buttons(message):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
 
+    start_handler(message)
+
   elif message.text == '🏁 Вкл/выкл конкурс':
     contest_status = not contest_status
     if contest_status:
@@ -178,12 +180,16 @@ def handle_buttons(message):
     else:
       bot.send_message(chat_id, "Конкурс закончился, понял?!!")
 
+    start_handler(message)
+
   elif message.text == '🗳️ Вкл/выкл голосование':
     votes_status = not votes_status
     if votes_status:
       bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
     else:
       bot.send_message(chat_id, "Голосование закончилось, ок?!!")
+    
+    start_handler(message)
 
   elif message.text == '🔢 Кол-во участников':
     user_state[chat_id] = 'awaiting_number_of_contestants'
@@ -208,6 +214,8 @@ def handle_buttons(message):
       "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
       "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
       "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
+    
+
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
@@ -217,6 +225,13 @@ def callback_handler(call):
 
   if call.data == 'start':
     start_handler(call.message)
+
+  elif call.data == 'status':
+    send_vote_status(call.message)
+
+  elif call.data == 'number_of_contestants':
+    user_state[chat_id] = 'awaiting_number_of_contestants'
+    bot.send_message(chat_id, "напиши количество участников")
 
   elif call.data == 'vote_status':
     votes_status = not votes_status
@@ -245,6 +260,8 @@ def callback_handler(call):
 
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+
+
 
   elif call.data == 'change_vote':
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (chat_id,))
@@ -303,7 +320,6 @@ def callback_handler(call):
       ADMIN_ID,
       "✅ Заявка подтверждена!"
     )
-    
   elif call.data.startswith('text_'):
     user_chat_id = int(call.data.split('_')[1])
     user_state[user_id] = 'awaiting_text_for_answer'
