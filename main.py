@@ -273,10 +273,10 @@ def callback_handler(call):
 ## text function
 @bot.message_handler(func=lambda message: True)
 def message_handler(message):
+  global user_state, answer_targets, votes_status, contest_status
   chat_id = message.chat.id
   user_id = vadim_id
   state = user_state.get(chat_id)
-  global user_state, answer_targets, votes_status, contest_status
 
   ## Standart komand
   if message.text == '📊 Статистика':
