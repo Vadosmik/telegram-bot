@@ -70,7 +70,7 @@ def admin_panel(message):
   markup.add(admin_buttons[4])
   markup.add(admin_buttons[5], admin_buttons[6])
 
-  bot.send_message(chat_id, reply_markup=markup)
+  bot.send_message(chat_id, "Выберите действие: ", reply_markup=markup)
 
 @app.route('/', methods=['POST'])
 def webhook():
