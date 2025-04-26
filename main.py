@@ -1,323 +1,220 @@
-import time
-import telebot
 import os
+import time
 import psycopg2
-from telebot import types
-from telebot.types import ReplyKeyboardMarkup
-from collections import Counter
-from dotenv import load_dotenv
 from flask import Flask, request
+from dotenv import load_dotenv
+import telebot
+from telebot import types
 
+# Загрузка переменных окружения
 load_dotenv()
+
+# Инициализация Flask и бота
 app = Flask(__name__)
-
 TOKEN = os.getenv("TOKEN")
-DATABASE_URL = os.getenv("DATABASE_URL")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
-maks_id = int(os.getenv("maks_id"))
-vadim_id = int(os.getenv("vadim_id"))
-
+WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot = telebot.TeleBot(TOKEN)
 
+# Инициализация базы данных
+DATABASE_URL = os.getenv("DATABASE_URL")
 conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 cursor = conn.cursor()
 
 cursor.execute("""
-  CREATE TABLE IF NOT EXISTS votes (
+CREATE TABLE IF NOT EXISTS votes (
     id SERIAL PRIMARY KEY,
     username TEXT,
     user_id BIGINT UNIQUE,
     voted_for TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS settings (
-  id SERIAL PRIMARY KEY,
-  key TEXT UNIQUE,
-  value TEXT
-  );
+);
+CREATE TABLE IF NOT EXISTS settings (
+    id SERIAL PRIMARY KEY,
+    key TEXT UNIQUE,
+    value TEXT
+);
 """)
 conn.commit()
 
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+# Настройки админов
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
+maks_id = int(os.getenv("maks_id"))
+vadim_id = int(os.getenv("vadim_id"))
+
+# Состояния
+user_state = {}
+answer_targets = {}
+contest_status = False
+votes_status = False
+
+# Установка webhook
 bot.remove_webhook()
 time.sleep(1)
 bot.set_webhook(url=WEBHOOK_URL)
 
-user_state = {}
-user_data = {}
-
-contest_status = False
-votes_status = False
-
-answer_targets = {}
-max_vote = 2
-
+# --- Flask роут для вебхука ---
 @app.route('/', methods=['POST'])
 def webhook():
-  json_str = request.get_data().decode('UTF-8')
-  update = telebot.types.Update.de_json(json_str)
-  bot.process_new_updates([update])
-  return '!', 200
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
 
+# --- Хэндлеры команд ---
 @bot.message_handler(commands=['start'])
 def start_handler(message):
-  chat_id = message.chat.id
-
-  if chat_id == ADMIN_ID or chat_id == vadim_id:
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=False, row_width=2)
-
-    admin_buttons = [
-      types.KeyboardButton('📊 Статистика'),
-      types.KeyboardButton('🧹 Очистить статистику'),
-      types.KeyboardButton('🏁 Вкл/выкл конкурс'),
-      types.KeyboardButton('🗳️ Вкл/выкл голосование'),
-      types.KeyboardButton('🔢 Кол-во участников'),
-      types.KeyboardButton('🎨 Участвовать'),
-      types.KeyboardButton('🗳️ Голосовать')
-    ]
-    
-    # Grupowanie przycisków
-    markup.add(*admin_buttons[:2])
-    markup.add(*admin_buttons[2:4])
-    markup.add(admin_buttons[4])
-    markup.add(admin_buttons[5], admin_buttons[6])
-
-    bot.send_message(chat_id, "Привет, админ! 👑", reply_markup=markup)
-  else:
-    markup = types.InlineKeyboardMarkup()
-
-    if contest_status:
-      btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
-      markup.add(btn1)
-    if votes_status:
-      btn2 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
-      markup.add(btn2)
-    if contest_status == False and votes_status == False:
-      btn3 = types.InlineKeyboardButton("👋 привет", callback_data='hi')
-      markup.add(btn3)
-
-    bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally Books! 📚✨", reply_markup=markup)
-
+    chat_id = message.chat.id
+    if chat_id in [ADMIN_ID, vadim_id]:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+        buttons = [
+            '📊 Статистика', '🧹 Очистить статистику',
+            '🏁 Вкл/выкл конкурс', '🗳️ Вкл/выкл голосование',
+            '🔢 Кол-во участников', '🎨 Участвовать', '🗳️ Голосовать'
+        ]
+        markup.add(*[types.KeyboardButton(btn) for btn in buttons])
+        bot.send_message(chat_id, "Привет, админ! 👑", reply_markup=markup)
+    else:
+        markup = types.InlineKeyboardMarkup()
+        if contest_status:
+            markup.add(types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add'))
+        if votes_status:
+            markup.add(types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote'))
+        if not contest_status and not votes_status:
+            markup.add(types.InlineKeyboardButton('👋 привет', callback_data='hi'))
+        bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally Books! 📚✨", reply_markup=markup)
 
 @bot.message_handler(commands=['me'])
 def send_my_id(message):
-  user_id = message.from_user.id
-  chat_id = message.chat.id
-  username = message.from_user.username or "без username"
-  name = message.from_user.first_name
+    user = message.from_user
+    bot.send_message(
+        message.chat.id,
+        f"👤 Имя: {user.first_name}\n"
+        f"🔹 Username: @{user.username or 'без username'}\n"
+        f"🆔 Telegram ID: {user.id}\n"
+        f"💬 Chat ID: {message.chat.id}"
+    )
 
-  bot.send_message(chat_id,
-    f"👤 Имя: {name}\n"
-    f"🔹 Username: @{username}\n"
-    f"🆔 Telegram ID: {user_id}\n"
-    f"💬 Chat ID: {chat_id}")
-  
 @bot.message_handler(commands=['call_max'])
-def send_to_max_mess(message):
-  chat_id = message.chat.id
+def call_max(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("👋 привет", callback_data='hi'))
+    markup.add(types.InlineKeyboardButton("XXX", callback_data='xxx'))
+    bot.send_message(message.chat.id,
+        "📢 Эта функция создана для шуток над @una_max. Выбери сообщение:",
+        reply_markup=markup
+    )
 
-  markup = types.InlineKeyboardMarkup()
-  markup.add(types.InlineKeyboardButton("👋 привет", callback_data='hi'))
-  markup.add(types.InlineKeyboardButton("XXX", callback_data='xxx'))
-
-  bot.send_message(
-    chat_id,
-    "📢 Эта функция создана для тех, кто хочет немного пошалить и позлить @una_max. "
-    "При нажатии на кнопку ему будет отправлено короткое сообщение.\n\n"
-    "🔸 Сейчас доступно только два варианта, но со временем список может расшириться.\n"
-    "🔸 В будущем эта функция исчезнет из меню — пользоваться ей придётся вручную.\n"
-    "🔸 Предложить своё сообщение можно командой /offer.\n"
-    "🔸 Всё абсолютно анонимно — никто не узнает, кто нажал.\n\n"
-    "👇 Выбери, что хочешь отправить:",
-    reply_markup=markup
-  )
-  
 @bot.message_handler(commands=['offer'])
-def send_offer(message):
-  chat_id = message.chat.id
-  user_state[chat_id] = 'awaiting_offer'
-  
-  bot.send_message(chat_id, "Введите текст, который хотите добавить.")
+def offer_message(message):
+    user_state[message.chat.id] = 'awaiting_offer'
+    bot.send_message(message.chat.id, "Введите текст, который хотите добавить.")
 
 @bot.message_handler(commands=['status'])
-def send_vote_status(message):
-  chat_id = message.chat.id
+def vote_status(message):
+    cursor.execute("SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY COUNT(*) DESC LIMIT 5")
+    top = cursor.fetchall()
+    if not top:
+        bot.send_message(message.chat.id, "Пока никто не проголосовал.")
+    else:
+        stats = "Top 5 голосов:\n" + "\n".join(f"заявка №{vote}: {count} голосов" for vote, count in top)
+        bot.send_message(message.chat.id, stats)
 
-  cursor.execute("SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY COUNT(*) DESC LIMIT 5")
-  top_votes = cursor.fetchall()
-
-  if not top_votes:
-    bot.send_message(chat_id, "Пока никто не проголосовал.")
-    return
-    
-  stats_message = "Top 5 голосов:\n"
-  for option, count in top_votes:
-    stats_message += f"заявка №{option}: {count} голосов\n"
-
-  bot.send_message(chat_id, stats_message)
-
+# --- Обработка текстовых сообщений от админа ---
 @bot.message_handler(func=lambda message: message.chat.id == ADMIN_ID and message.text)
-def admin_buttons_handler(message):
-    global contest_status, votes_status, user_state
-
-    if message.text == '📊 Статистика':
-        send_vote_status(message)
-
-    elif message.text == '🧹 Очистить статистику':
+def admin_panel(message):
+    global contest_status, votes_status
+    text = message.text
+    if text == '📊 Статистика':
+        vote_status(message)
+    elif text == '🧹 Очистить статистику':
         cursor.execute("DELETE FROM votes")
         conn.commit()
-        bot.send_message(message.chat.id, "Все голоса удалены.")
-
-    elif message.text == '🏁 Вкл/выкл конкурс':
+        bot.send_message(message.chat.id, "Статистика очищена.")
+    elif text == '🏁 Вкл/выкл конкурс':
         contest_status = not contest_status
-        if contest_status:
-            bot.send_message(message.chat.id, "Конкурс начался, макс!!")
-        else:
-            bot.send_message(message.chat.id, "Конкурс закончился, понял?!!")
-
-    elif message.text == '🗳️ Вкл/выкл голосование':
+        bot.send_message(message.chat.id, f"Конкурс {'включён' if contest_status else 'выключен'}.")
+    elif text == '🗳️ Вкл/выкл голосование':
         votes_status = not votes_status
-        if votes_status:
-            bot.send_message(message.chat.id, "Голосование началось, максон!!!!!!!!!!")
-        else:
-            bot.send_message(message.chat.id, "Голосование закончилось, ок?!!")
+        bot.send_message(message.chat.id, f"Голосование {'включено' if votes_status else 'выключено'}.")
+    elif text == '🔢 Кол-во участников':
+        cursor.execute("SELECT COUNT(DISTINCT voted_for) FROM votes")
+        count = cursor.fetchone()[0]
+        bot.send_message(message.chat.id, f"Количество участников: {count}")
+    elif text == '🎨 Участвовать':
+        start_handler(message)
+    elif text == '🗳️ Голосовать':
+        start_handler(message)
 
-    elif message.text == '🔢 Кол-во участников':
-        user_state[message.chat.id] = 'awaiting_number_of_contestants'
-        bot.send_message(message.chat.id, "Напиши количество участников")
+# --- Хэндлеры колбеков ---
+@bot.callback_query_handler(func=lambda call: True)
+def callback(call):
+    chat_id = call.message.chat.id
+    user_id = call.from_user.id
+    data = call.data
 
-    elif message.text == '🎨 Участвовать':
-        user_state[message.chat.id] = 'awaiting_agree'
+    if data == 'start':
+        start_handler(call.message)
+    elif data == 'vote':
+        user_state[chat_id] = 'awaiting_vote'
+        bot.send_message(chat_id, "Отправьте номер понравившейся работы.")
+    elif data == 'add':
+        user_state[chat_id] = 'awaiting_agree'
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
-        bot.send_message(
-            message.chat.id,
-            "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
-            "Это отличная возможность показать свой талант! 🚀\n\n"
-            "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
-            "Ждём твою работу — давай удивим всех вместе! ✨\n"
-            "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
-            reply_markup=markup
-        )
+        bot.send_message(chat_id, "Отправьте проект для участия.", reply_markup=markup)
+    elif data == 'agree':
+        user_state[chat_id] = 'awaiting_project'
+        bot.send_message(chat_id, "📌 Пришлите сам проект.")
+    elif data == 'hi':
+        bot.send_message(maks_id, "Приветик")
+    elif data == 'xxx':
+        bot.send_message(maks_id, "я тебя трахну!!")
+    elif data == 'clear':
+        cursor.execute("DELETE FROM votes")
+        conn.commit()
+        bot.send_message(chat_id, "Все голоса удалены.")
+    elif data.startswith('approve_'):
+        target_id = int(data.split('_')[1])
+        bot.send_message(target_id, "✅ Ваша заявка принята!")
+        bot.send_message(ADMIN_ID, "✅ Заявка подтверждена!")
+    elif data.startswith('text_'):
+        target_id = int(data.split('_')[1])
+        answer_targets[user_id] = target_id
+        user_state[user_id] = 'awaiting_text_for_answer'
+        bot.send_message(user_id, "Введите текст для отправки пользователю.")
 
-    elif message.text == '🗳️ Голосовать':
-        user_state[message.chat.id] = 'awaiting_vote'
-        bot.send_message(
-            message.chat.id,
-            "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
-            "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
-            "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-            "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆"
-        )
+# --- Обработка всех сообщений ---
+@bot.message_handler(func=lambda message: True)
+def all_messages(message):
+    chat_id = message.chat.id
+    state = user_state.get(chat_id)
 
-@bot.callback_query_handler(func=lambda call: True)
-def callback_handler(call):
-  chat_id = call.message.chat.id
-  user_id = call.from_user.id
-  global user_state, answer_targets, votes_status, contest_status
-
-  if call.data == 'start':
-    start_handler(call.message)
-
-  elif call.data == 'status':
-    send_vote_status(call.message)
-
-  elif call.data == 'number_of_contestants':
-    user_state[chat_id] = 'awaiting_number_of_contestants'
-    bot.send_message(chat_id, "напиши количество участников")
-
-  elif call.data == 'vote_status':
-    votes_status = not votes_status
-    if votes_status == True:
-      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
-    else:
-      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
-
-  elif call.data == 'contest_status':
-    contest_status = not contest_status
-    if contest_status == True:
-      bot.send_message(chat_id, "Конкурс начался, макс!!")
-    else:
-      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
-
-  elif call.data == 'hi':  
-    bot.send_message(maks_id, "приветик")
-
-  elif call.data == 'xxx':  
-    bot.send_message(maks_id, "я тебя трахну!!")
-
-  elif call.data == 'clear':
-    cursor.execute("DELETE FROM votes")
-    conn.commit()
-    bot.send_message(chat_id, "Все голоса удалены.")
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
-
-
-  elif call.data == 'change_vote':
-    cursor.execute("SELECT * FROM votes WHERE user_id = %s", (chat_id,))
-    result = cursor.fetchone()
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
-    if result:
-      cursor.execute("DELETE FROM votes WHERE user_id = %s", (chat_id,))
-      conn.commit()
-      user_state[chat_id] = 'awaiting_vote'
-      bot.send_message(chat_id, "Ваш предыдущий голос удалён. Пожалуйста, введите номер новой заявки.")
-    else:
-      bot.send_message(chat_id, "Вы еще не голосовали.", reply_markup=markup)
-
-  elif call.data == 'remove_vote':
-    cursor.execute("DELETE FROM votes WHERE user_id = %s", (chat_id,))
-    conn.commit()
-    bot.send_message(chat_id, "Ваш голос был удален. Вы можете проголосовать снова.")
-
-  elif call.data == 'add':
-    user_state[chat_id] = 'awaiting_agree'
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
-    bot.send_message(chat_id,
-  "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
-  "Это отличная возможность показать свой талант! 🚀\n\n"
-  "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
-  "Ждём твою работу — давай удивим всех вместе! ✨\n"
-  "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
-  reply_markup=markup)
-
-  elif call.data == 'agree':
-    user_state[chat_id] = 'awaiting_project'
-    bot.send_message(chat_id, "📌 Пожалуйста, пришли сам проект")
-
-  elif call.data == 'vote':
-    user_state[chat_id] = 'awaiting_vote'
-    bot.send_message(chat_id,
-      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
-      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
-      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
-    
-  elif call.data.startswith('approve_'):
-    user_chat_id = int(call.data.split('_')[1])
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-    bot.send_message(
-      user_chat_id,
-      "✅ Спасибо! Ваша заявка принята. Удачи в конкурсе! ✨",
-      reply_markup=markup
-    )
-    bot.send_message(
-      ADMIN_ID,
-      "✅ Заявка подтверждена!"
-    )
-  elif call.data.startswith('text_'):
-    user_chat_id = int(call.data.split('_')[1])
-    user_state[user_id] = 'awaiting_text_for_answer'
-    answer_targets[user_id] = user_chat_id
-
-    bot.send_message(user_id, "Введите текст, который нужно переслать пользователю.")
+    if state == 'awaiting_offer':
+        bot.send_message(ADMIN_ID, f"Новое предложение: {message.text}")
+        user_state.pop(chat_id)
+        bot.send_message(chat_id, "✅ Ваше предложение отправлено.")
+    elif state == 'awaiting_project':
+        bot.send_message(ADMIN_ID, f"Новый проект от {chat_id}:")
+        bot.forward_message(ADMIN_ID, chat_id, message.message_id)
+        markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("✅ Одобрить", callback_data=f"approve_{chat_id}"))
+        bot.send_message(ADMIN_ID, "Выберите действие:", reply_markup=markup)
+        user_state.pop(chat_id)
+    elif state == 'awaiting_vote':
+        try:
+            vote = int(message.text)
+            cursor.execute("INSERT INTO votes (username, user_id, voted_for) VALUES (%s, %s, %s) ON CONFLICT (user_id) DO UPDATE SET voted_for = EXCLUDED.voted_for",
+                           (message.from_user.username, message.from_user.id, vote))
+            conn.commit()
+            bot.send_message(chat_id, "✅ Ваш голос принят!")
+            user_state.pop(chat_id)
+        except ValueError:
+            bot.send_message(chat_id, "❗ Введите только номер заявки.")
+    elif state == 'awaiting_text_for_answer':
+        target_id = answer_targets.pop(chat_id, None)
+        if target_id:
+            bot.send_message(target_id, message.text)
+            bot.send_message(chat_id, "✅ Текст отправлен пользователю.")
+            user_state.pop(chat_id)
 
 ## =============================      ============================= ##
 
