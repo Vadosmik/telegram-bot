@@ -154,69 +154,6 @@ def send_vote_status(message):
 
   bot.send_message(chat_id, stats_message)
 
-@bot.message_handler(func=lambda message: True)
-def handle_buttons(message):
-  chat_id = message.chat.id
-  global user_state, answer_targets, votes_status, contest_status
-
-  if message.text == '📊 Статистика':
-    send_vote_status(message)
-    start_handler(message)
-
-  elif message.text == '🧹 Очистить статистику':
-    cursor.execute("DELETE FROM votes")
-    conn.commit()
-    bot.send_message(chat_id, "Все голоса удалены.")
-
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
-
-    start_handler(message)
-
-  elif message.text == '🏁 Вкл/выкл конкурс':
-    contest_status = not contest_status
-    if contest_status:
-      bot.send_message(chat_id, "Конкурс начался, макс!!")
-    else:
-      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
-
-    start_handler(message)
-
-  elif message.text == '🗳️ Вкл/выкл голосование':
-    votes_status = not votes_status
-    if votes_status:
-      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
-    else:
-      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
-    
-    start_handler(message)
-
-  elif message.text == '🔢 Кол-во участников':
-    user_state[chat_id] = 'awaiting_number_of_contestants'
-    bot.send_message(chat_id, "напиши количество участников")
-
-  elif message.text == '🎨 Участвовать':
-    user_state[chat_id] = 'awaiting_agree'
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
-    bot.send_message(chat_id,
-      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
-      "Это отличная возможность показать свой талант! 🚀\n\n"
-      "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
-      "Ждём твою работу — давай удивим всех вместе! ✨\n"
-      "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
-      reply_markup=markup)
-
-  elif message.text == '🗳️ Голосовать':
-    user_state[chat_id] = 'awaiting_vote'
-    bot.send_message(chat_id,
-      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
-      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
-      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
-    
-
-
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
   chat_id = call.message.chat.id
@@ -506,6 +443,66 @@ def message_handler(message):
 
     user_state.pop(admin_id, None)
     answer_targets.pop(admin_id, None)
+
+  global user_state, answer_targets, votes_status, contest_status
+
+  if message.text == '📊 Статистика':
+    send_vote_status(message)
+    start_handler(message)
+
+  elif message.text == '🧹 Очистить статистику':
+    cursor.execute("DELETE FROM votes")
+    conn.commit()
+    bot.send_message(chat_id, "Все голоса удалены.")
+
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+
+    start_handler(message)
+
+  elif message.text == '🏁 Вкл/выкл конкурс':
+    contest_status = not contest_status
+    if contest_status:
+      bot.send_message(chat_id, "Конкурс начался, макс!!")
+    else:
+      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
+
+    start_handler(message)
+
+  elif message.text == '🗳️ Вкл/выкл голосование':
+    votes_status = not votes_status
+    if votes_status:
+      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
+    else:
+      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
+    
+    start_handler(message)
+
+  elif message.text == '🔢 Кол-во участников':
+    user_state[chat_id] = 'awaiting_number_of_contestants'
+    bot.send_message(chat_id, "напиши количество участников")
+
+  elif message.text == '🎨 Участвовать':
+    user_state[chat_id] = 'awaiting_agree'
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
+    bot.send_message(chat_id,
+      "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
+      "Это отличная возможность показать свой талант! 🚀\n\n"
+      "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
+      "Ждём твою работу — давай удивим всех вместе! ✨\n"
+      "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
+      reply_markup=markup)
+
+  elif message.text == '🗳️ Голосовать':
+    user_state[chat_id] = 'awaiting_vote'
+    bot.send_message(chat_id,
+      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
+      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
+      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
+      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
+    
+
 
 def get_max_vote():
     cursor.execute("SELECT value FROM settings WHERE key = %s", ('max_vote',))
