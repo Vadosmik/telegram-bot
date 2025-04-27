@@ -331,7 +331,7 @@ def message_handler(message):
       "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
   
   ## comands
-  if state == 'awaiting_vote':
+  elif state == 'awaiting_vote':
     user_id = chat_id
     user_vote = message.text.strip()
     username = message.from_user.username or "без username"
