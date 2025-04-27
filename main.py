@@ -262,6 +262,7 @@ def callback_handler(call):
     bot.send_message(maks_id, "я тебя трахну!!")
 
 ## text function
+@bot.message_handler(content_types=['text', 'photo', 'video', 'document'])
 @bot.message_handler(func=lambda message: True)
 def message_handler(message):
   global user_state, answer_targets, votes_status, contest_status
