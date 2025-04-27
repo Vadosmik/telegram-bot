@@ -149,7 +149,7 @@ def send_vote_status(message, sort_order):
   if sort_order == 'sorted':
     query = "SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY COUNT(*) DESC"
   else:  # unsorted
-    query = "SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for"
+    query = "SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY voted_for ASC"
 
   cursor.execute(query)
   top_votes = cursor.fetchall()
