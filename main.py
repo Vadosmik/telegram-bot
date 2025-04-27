@@ -101,7 +101,6 @@ def start_handler(message):
 
     bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally Books! 📚✨", reply_markup=markup)
 
-
 @bot.message_handler(commands=['me'])
 def send_my_id(message):
   user_id = message.from_user.id
@@ -158,9 +157,17 @@ def send_vote_status(message, sort_order):
     bot.send_message(chat_id, "Пока никто не проголосовал.")
     return
     
+  
+    
+  
   stats_message = ""
   for option, count in top_votes:
-    stats_message += f"заявка №{option}: {count} голосов\n"
+    if count % 10 == 1 and count % 100 != 11:
+      stats_message += f"заявка №{option}: {count} голос\n"
+    elif count % 10 in [2, 3, 4] and count % 100 not in [12, 13, 14]:
+      stats_message += f"заявка №{option}: {count} голоса\n"
+    else:
+      stats_message += f"заявка №{option}: {count} голосов\n"
 
   bot.send_message(chat_id, stats_message)
 
