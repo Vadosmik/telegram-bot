@@ -143,17 +143,22 @@ def send_offer(message):
   bot.send_message(chat_id, "Введите текст, который хотите добавить.")
 
 @bot.message_handler(commands=['status'])
-def send_vote_status(message):
+def send_vote_status(message, sort_order):
   chat_id = message.chat.id
 
-  cursor.execute("SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY COUNT(*) DESC LIMIT 5")
+  if sort_order == 'sorted':
+    query = "SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for ORDER BY COUNT(*) DESC"
+  else:  # unsorted
+    query = "SELECT voted_for, COUNT(*) FROM votes GROUP BY voted_for"
+
+  cursor.execute(query)
   top_votes = cursor.fetchall()
 
   if not top_votes:
     bot.send_message(chat_id, "Пока никто не проголосовал.")
     return
     
-  stats_message = "Top 5 голосов:\n"
+  stats_message = ""
   for option, count in top_votes:
     stats_message += f"заявка №{option}: {count} голосов\n"
 
@@ -168,43 +173,32 @@ def callback_handler(call):
 
   if call.data == 'start':
     start_handler(call.message)
-
-  elif call.data == 'status':
-    send_vote_status(call.message)
-
-  elif call.data == 'number_of_contestants':
-    user_state[chat_id] = 'awaiting_number_of_contestants'
-    bot.send_message(chat_id, "напиши количество участников")
-
-  elif call.data == 'vote_status':
-    votes_status = not votes_status
-    if votes_status == True:
-      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
-    else:
-      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
-
-  elif call.data == 'contest_status':
-    contest_status = not contest_status
-    if contest_status == True:
-      bot.send_message(chat_id, "Конкурс начался, макс!!")
-    else:
-      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
-
-  elif call.data == 'hi':  
-    bot.send_message(maks_id, "приветик")
-
-  elif call.data == 'xxx':  
-    bot.send_message(maks_id, "я тебя трахну!!")
-
-  elif call.data == 'clear':
-    cursor.execute("DELETE FROM votes")
-    conn.commit()
-    bot.send_message(chat_id, "Все голоса удалены.")
-
+  
+# коекурс
+  elif call.data == 'add':
+    user_state[chat_id] = 'awaiting_agree'
     markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("🔙 Вернуться в начало", callback_data='start'))
+    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
+    bot.send_message(chat_id,
+  "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
+  "Это отличная возможность показать свой талант! 🚀\n\n"
+  "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
+  "Ждём твою работу — давай удивим всех вместе! ✨\n"
+  "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
+  reply_markup=markup)
 
+  elif call.data == 'agree':
+    user_state[chat_id] = 'awaiting_project'
+    bot.send_message(chat_id, "📌 Пожалуйста, пришли сам проект")
 
+# голосование
+  elif call.data == 'vote':
+    user_state[chat_id] = 'awaiting_vote'
+    bot.send_message(chat_id,
+      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
+      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
+      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
+      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
 
   elif call.data == 'change_vote':
     cursor.execute("SELECT * FROM votes WHERE user_id = %s", (chat_id,))
@@ -226,30 +220,7 @@ def callback_handler(call):
     conn.commit()
     bot.send_message(chat_id, "Ваш голос был удален. Вы можете проголосовать снова.")
 
-  elif call.data == 'add':
-    user_state[chat_id] = 'awaiting_agree'
-    markup = types.InlineKeyboardMarkup()
-    markup.add(types.InlineKeyboardButton("✅ Согласен", callback_data='agree'))
-    bot.send_message(chat_id,
-  "Участвуя в конкурсе, ты даёшь согласие на размещение своего проекта на нашем Telegram-канале Ally Books 📚.\n"
-  "Это отличная возможность показать свой талант! 🚀\n\n"
-  "Что нужно отправить:\n📌 Сам проект (видео или файл)\n📸 Скриншот из монтажной/рабочей программы\n\n"
-  "Ждём твою работу — давай удивим всех вместе! ✨\n"
-  "⬇️⬇️⬇ТЫКНИТЕ НА ВОТ ЭТУ КНОПКУ⬇⬇️⬇️",
-  reply_markup=markup)
-
-  elif call.data == 'agree':
-    user_state[chat_id] = 'awaiting_project'
-    bot.send_message(chat_id, "📌 Пожалуйста, пришли сам проект")
-
-  elif call.data == 'vote':
-    user_state[chat_id] = 'awaiting_vote'
-    bot.send_message(chat_id,
-      "Все работы участников уже размещены на нашем канале Ally Books 📚!\n"
-      "Оцени их и выбери свою любимую — нам важно твоё мнение! 💬✨\n\n"
-      "Чтобы проголосовать, просто пришли сюда номер работы, которая тебе понравилась больше всего.\n"
-      "Лишь один шаг — и твой голос может решить судьбу победителя! 🏆")
-    
+# дополнителные функции
   elif call.data.startswith('approve_'):
     user_chat_id = int(call.data.split('_')[1])
     markup = types.InlineKeyboardMarkup()
@@ -263,12 +234,25 @@ def callback_handler(call):
       ADMIN_ID,
       "✅ Заявка подтверждена!"
     )
+ 
   elif call.data.startswith('text_'):
     user_chat_id = int(call.data.split('_')[1])
     user_state[user_id] = 'awaiting_text_for_answer'
     answer_targets[user_id] = user_chat_id
 
     bot.send_message(user_id, "Введите текст, который нужно переслать пользователю.")
+
+  elif call.data == 'sorted':
+    send_vote_status(call.message, 'sorted')
+  
+  elif call.data == 'unsorted':
+    send_vote_status(call.message, 'unsorted')
+
+  elif call.data == 'hi':  
+    bot.send_message(maks_id, "приветик")
+
+  elif call.data == 'xxx':  
+    bot.send_message(maks_id, "я тебя трахну!!")
 
 ## text function
 @bot.message_handler(func=lambda message: True)
@@ -279,9 +263,13 @@ def message_handler(message):
   state = user_state.get(chat_id)
 
   ## Standart komand
-  if message.text == '📊 Статистика':
-    send_vote_status(message)
-    admin_panel(message)
+  if message.text == '📊 Статистика':  
+    markup = types.InlineKeyboardMarkup()
+    markup.add(
+      types.InlineKeyboardButton("Сортирована", callback_data='sorted'),
+      types.InlineKeyboardButton("Не сортирована", callback_data='unsorted')
+    )
+    bot.send_message(chat_id, "Какую выбрать сортировку?", reply_markup=markup)
 
   elif message.text == '🧹 Очистить статистику':
     cursor.execute("DELETE FROM votes")
