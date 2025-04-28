@@ -44,7 +44,7 @@ bot.set_webhook(url=WEBHOOK_URL)
 user_state = {}
 user_data = {}
 
-contest_status = False
+contest_status = True
 votes_status = False
 
 answer_targets = {}
