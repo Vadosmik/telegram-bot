@@ -33,8 +33,27 @@ cursor.execute("""
   key TEXT UNIQUE,
   value TEXT
   );
+  INSERT INTO settings (key, value) VALUES ('contest_status', 'True')
+  ON CONFLICT (key) DO NOTHING;
+  INSERT INTO settings (key, value) VALUES ('votes_status', 'False')
+  ON CONFLICT (key) DO NOTHING;
 """)
 conn.commit()
+
+def get_setting(key):
+  cursor.execute("SELECT value FROM settings WHERE key = %s", (key,))
+  result = cursor.fetchone()
+  if result:
+    return result[0] == 'True'
+  return False
+
+def set_setting(key, value):
+  cursor.execute("""
+    INSERT INTO settings (key, value) VALUES (%s, %s)
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+  """, (key, str(value)))
+  conn.commit()
+
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot.remove_webhook()
@@ -44,8 +63,8 @@ bot.set_webhook(url=WEBHOOK_URL)
 user_state = {}
 user_data = {}
 
-contest_status = True
-votes_status = False
+contest_status = get_setting('contest_status')
+votes_status = get_setting('votes_status')
 
 answer_targets = {}
 max_vote = 2
@@ -290,20 +309,16 @@ def message_handler(message):
     admin_panel(message)
 
   elif message.text == '🏁 Вкл/выкл конкурс':
-    contest_status = not contest_status
-    if contest_status:
-      bot.send_message(chat_id, "Конкурс начался, макс!!")
-    else:
-      bot.send_message(chat_id, "Конкурс закончился, понял?!!")
+    current_status = get_setting('contest_status')
+    set_setting('contest_status', not current_status)
+    bot.send_message(message.chat.id, f"Конкурс {'включен' if not current_status else 'выключен'}.")
 
     admin_panel(message)
 
   elif message.text == '🗳️ Вкл/выкл голосование':
-    votes_status = not votes_status
-    if votes_status:
-      bot.send_message(chat_id, "Голосование началось, максон!!!!!!!!!!")
-    else:
-      bot.send_message(chat_id, "Голосование закончилось, ок?!!")
+    current_status = get_setting('votes_status')
+    set_setting('votes_status', not current_status)
+    bot.send_message(message.chat.id, f"Голосование {'включено' if not current_status else 'выключено'}.")
     
     admin_panel(message)
 
