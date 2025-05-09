@@ -219,7 +219,7 @@ def callback_handler(call):
 
   elif call.data == 'agree':
     user_state[chat_id] = 'awaiting_project'
-    bot.send_message(chat_id, "📌 Спасибо, пришли пожалуйста фото/файл своего арта. \nТолько ОДНО фото!!!!")
+    bot.send_message(chat_id, "📌 Спасибо, пришлите пожалуйста \nфото/файл своего арта. \n\nТолько ОДНО фото/файл!!!!")
 
 # голосование
   # elif call.data == 'vote':
@@ -410,7 +410,7 @@ def message_handler(message):
         file_id = message.document.file_id
       user_data[chat_id]['project'] = file_id
       user_data[chat_id]['type'] = message.content_type
-      bot.send_message(chat_id, "✅Арт получен! \n📸 Теперь пришли видео того вы рисовали свой арт. \nТолько ОДНО видео/файл!")
+      bot.send_message(chat_id, "✅Арт получен! \n📸 Теперь пришлите видео того, как вы рисовали свой арт.\n\nТолько ОДНО видео/файл!!")
       user_state[chat_id] = 'awaiting_screenshot'
     else:
       bot.send_message(chat_id, "❗ Пожалуйста, пришли файл, фото или видео.")
