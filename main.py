@@ -74,18 +74,18 @@ def admin_panel(message):
   chat_id = message.chat.id
   markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
 
-  admin_buttons = [
-    # types.KeyboardButton('📊 Статистика'),
-    # types.KeyboardButton('🧹 Очистить статистику'),
-    # types.KeyboardButton('🏁 Вкл/выкл конкурс'),
-    # types.KeyboardButton('🗳️ Вкл/выкл голосование'),
-    # types.KeyboardButton('🔢 Кол-во участников'),
-    types.KeyboardButton('🎨 Участвовать')
-    # types.KeyboardButton('🗳️ Голосовать')
-  ]
+  # admin_buttons = [
+  #   types.KeyboardButton('📊 Статистика'),
+  #   types.KeyboardButton('🧹 Очистить статистику'),
+  #   types.KeyboardButton('🏁 Вкл/выкл конкурс'),
+  #   types.KeyboardButton('🗳️ Вкл/выкл голосование'),
+  #   types.KeyboardButton('🔢 Кол-во участников'),
+  #   types.KeyboardButton('🎨 Участвовать')
+  #   types.KeyboardButton('🗳️ Голосовать')
+  # ]
     
   # Grupowanie przycisków
-  markup.add(*admin_buttons[1])
+  markup.add(types.KeyboardButton('🎨 Участвовать'))
   # markup.add(*admin_buttons[:2])
   # markup.add(*admin_buttons[2:4])
   # markup.add(admin_buttons[4])
