@@ -99,7 +99,6 @@ def admin_panel(message):
   ]
     
   # Grupowanie przycisków
-  markup.add(types.KeyboardButton('🎨 Участвовать'))
   markup.add(*admin_buttons[:2])
   markup.add(*admin_buttons[2:4])
   markup.add(admin_buttons[4])
@@ -125,7 +124,6 @@ def start_handler(message):
   else:
     markup = types.InlineKeyboardMarkup()
 
-    btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
     markup.add(btn1)
     if contest_status:
       btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
