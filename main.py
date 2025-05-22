@@ -7,18 +7,32 @@ from collections import Counter
 from dotenv import load_dotenv
 from flask import Flask, request
 
+
+
+
 load_dotenv()
 app = Flask(__name__)
 
 TOKEN = os.getenv("TOKEN")
-DATABASE_URL = os.getenv("DATABASE_URL")
+# DATABASE_URL = os.getenv("DATABASE_URL")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 maks_id = int(os.getenv("maks_id"))
 vadim_id = int(os.getenv("vadim_id"))
 
 bot = telebot.TeleBot(TOKEN)
 
-conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+# conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+# cursor = conn.cursor()
+
+conn = psycopg2.connect(
+    dbname=os.getenv("DB_NAME"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASSWORD"),
+    host=os.getenv("DB_HOST"),
+    port=os.getenv("DB_PORT"),
+    sslmode="require"
+)
+
 cursor = conn.cursor()
 
 cursor.execute("""
