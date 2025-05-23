@@ -124,7 +124,6 @@ def start_handler(message):
   else:
     markup = types.InlineKeyboardMarkup()
 
-    markup.add(btn1)
     if contest_status:
       btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
       markup.add(btn1)
