@@ -7,9 +7,6 @@ from collections import Counter
 from dotenv import load_dotenv
 from flask import Flask, request
 
-
-
-
 load_dotenv()
 app = Flask(__name__)
 
@@ -21,53 +18,20 @@ vadim_id = int(os.getenv("vadim_id"))
 
 bot = telebot.TeleBot(TOKEN)
 
+# stara wersja
 # conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 # cursor = conn.cursor()
 
-conn = psycopg2.connect(
-    dbname=os.getenv("DB_NAME"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASSWORD"),
-    host=os.getenv("DB_HOST"),
-    port=os.getenv("DB_PORT"),
-    sslmode="require"
-)
-
-cursor = conn.cursor()
-
-cursor.execute("""
-  CREATE TABLE IF NOT EXISTS votes (
-    id SERIAL PRIMARY KEY,
-    username TEXT,
-    user_id BIGINT UNIQUE,
-    voted_for TEXT NOT NULL
-  );
-  CREATE TABLE IF NOT EXISTS settings (
-  id SERIAL PRIMARY KEY,
-  key TEXT UNIQUE,
-  value TEXT
-  );
-  INSERT INTO settings (key, value) VALUES ('contest_status', 'True')
-  ON CONFLICT (key) DO NOTHING;
-  INSERT INTO settings (key, value) VALUES ('votes_status', 'False')
-  ON CONFLICT (key) DO NOTHING;
-""")
-conn.commit()
-
-def get_setting(key):
-  cursor.execute("SELECT value FROM settings WHERE key = %s", (key,))
-  result = cursor.fetchone()
-  if result:
-    return result[0] == 'True'
-  return False
-
-def set_setting(key, value):
-  cursor.execute("""
-    INSERT INTO settings (key, value) VALUES (%s, %s)
-    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
-  """, (key, str(value)))
-  conn.commit()
-
+# nowa wersja — ZAKOMENTOWANA NA TWOJĄ PROŚBĘ
+# conn = psycopg2.connect(
+#     dbname=os.getenv("DB_NAME"),
+#     user=os.getenv("DB_USER"),
+#     password=os.getenv("DB_PASSWORD"),
+#     host=os.getenv("DB_HOST"),
+#     port=os.getenv("DB_PORT"),
+#     sslmode="require"
+# )
+# cursor = conn.cursor()
 
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 bot.remove_webhook()
@@ -77,97 +41,94 @@ bot.set_webhook(url=WEBHOOK_URL)
 user_state = {}
 user_data = {}
 
-# contest_status = True
-contest_status = get_setting('contest_status')
-votes_status = get_setting('votes_status')
-
+contest_status = True
+votes_status = False
 answer_targets = {}
 max_vote = 2
 
 def admin_panel(message):
-  chat_id = message.chat.id
-  markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
+    chat_id = message.chat.id
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True, row_width=2)
 
-  admin_buttons = [
-    types.KeyboardButton('📊 Статистика'),
-    types.KeyboardButton('🧹 Очистить статистику'),
-    types.KeyboardButton('🏁 Вкл/выкл конкурс'),
-    types.KeyboardButton('🗳️ Вкл/выкл голосование'),
-    types.KeyboardButton('🔢 Кол-во участников'),
-    types.KeyboardButton('🎨 Участвовать'),
-    types.KeyboardButton('🗳️ Голосовать')
-  ]
-    
-  # Grupowanie przycisków
-  markup.add(*admin_buttons[:2])
-  markup.add(*admin_buttons[2:4])
-  markup.add(admin_buttons[4])
-  markup.add(admin_buttons[5], admin_buttons[6])
+    admin_buttons = [
+        types.KeyboardButton('📊 Статистика'),
+        types.KeyboardButton('🧹 Очистить статистику'),
+        types.KeyboardButton('🏁 Вкл/выкл конкурс'),
+        types.KeyboardButton('🗳️ Вкл/выкл голосование'),
+        types.KeyboardButton('🔢 Кол-во участников'),
+        types.KeyboardButton('🎨 Участвовать'),
+        types.KeyboardButton('🗳️ Голосовать')
+    ]
+        
+    markup.add(*admin_buttons[:2])
+    markup.add(*admin_buttons[2:4])
+    markup.add(admin_buttons[4])
+    markup.add(admin_buttons[5], admin_buttons[6])
 
-  bot.send_message(chat_id, "Выберите действие: ", reply_markup=markup)
+    bot.send_message(chat_id, "Выберите действие: ", reply_markup=markup)
 
 @app.route('/', methods=['POST'])
 def webhook():
-  json_str = request.get_data().decode('UTF-8')
-  update = telebot.types.Update.de_json(json_str)
-  bot.process_new_updates([update])
-  return '!', 200
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return '!', 200
 
 @bot.message_handler(commands=['start'])
 def start_handler(message):
-  chat_id = message.chat.id
+    chat_id = message.chat.id
 
-  if chat_id == ADMIN_ID or chat_id == vadim_id:
-    bot.send_message(chat_id, "Привет, админ! 👑")
-    admin_panel(message)
-    
-  else:
-    markup = types.InlineKeyboardMarkup()
+    if chat_id == ADMIN_ID or chat_id == vadim_id:
+        bot.send_message(chat_id, "Привет, админ! 👑")
+        admin_panel(message)
+        
+    else:
+        markup = types.InlineKeyboardMarkup()
 
-    if contest_status:
-      btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
-      markup.add(btn1)
-    if votes_status:
-      btn2 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
-      markup.add(btn2)
-    if contest_status == False and votes_status == False:
-      btn3 = types.InlineKeyboardButton("👋 привет", callback_data='hi')
-      markup.add(btn3)
+        if contest_status:
+            btn1 = types.InlineKeyboardButton('🎨 Участвовать в конкурсе', callback_data='add')
+            markup.add(btn1)
+        if votes_status:
+            btn2 = types.InlineKeyboardButton('🗳️ Проголосовать за участников', callback_data='vote')
+            markup.add(btn2)
+        if contest_status == False and votes_status == False:
+            btn3 = types.InlineKeyboardButton("👋 привет", callback_data='hi')
+            markup.add(btn3)
 
-    bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally Books! 📚✨", reply_markup=markup)
+        bot.send_message(chat_id, "Приветствуем в боте конкурсов канала Ally Books! 📚✨", reply_markup=markup)
 
 @bot.message_handler(commands=['me'])
 def send_my_id(message):
-  user_id = message.from_user.id
-  chat_id = message.chat.id
-  username = message.from_user.username or "без username"
-  name = message.from_user.first_name
+    user_id = message.from_user.id
+    chat_id = message.chat.id
+    username = message.from_user.username or "без username"
+    name = message.from_user.first_name
 
-  bot.send_message(chat_id,
-    f"👤 Имя: {name}\n"
-    f"🔹 Username: @{username}\n"
-    f"🆔 Telegram ID: {user_id}\n"
-    f"💬 Chat ID: {chat_id}")
-  
+    bot.send_message(chat_id,
+        f"👤 Имя: {name}\n"
+        f"🔹 Username: @{username}\n"
+        f"🆔 Telegram ID: {user_id}\n"
+        f"💬 Chat ID: {chat_id}")
+
 @bot.message_handler(commands=['call_max'])
 def send_to_max_mess(message):
-  chat_id = message.chat.id
+    chat_id = message.chat.id
 
-  markup = types.InlineKeyboardMarkup()
-  markup.add(types.InlineKeyboardButton("👋 привет", callback_data='hi'))
-  markup.add(types.InlineKeyboardButton("XXX", callback_data='xxx'))
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("👋 привет", callback_data='hi'))
+    markup.add(types.InlineKeyboardButton("XXX", callback_data='xxx'))
 
-  bot.send_message(
-    chat_id,
-    "📢 Эта функция создана для тех, кто хочет немного пошалить и позлить @una_max. "
-    "При нажатии на кнопку ему будет отправлено короткое сообщение.\n\n"
-    "🔸 Сейчас доступно только два варианта, но со временем список может расшириться.\n"
-    "🔸 В будущем эта функция исчезнет из меню — пользоваться ей придётся вручную.\n"
-    "🔸 Предложить своё сообщение можно командой /offer.\n"
-    "🔸 Всё абсолютно анонимно — никто не узнает, кто нажал.\n\n"
-    "👇 Выбери, что хочешь отправить:",
-    reply_markup=markup
-  )
+    bot.send_message(
+        chat_id,
+        "📢 Эта функция создана для тех, кто хочет немного пошалить и позлить @una_max. "
+        "При нажатии на кнопку ему будет отправлено короткое сообщение.\n\n"
+        "🔸 Сейчас доступно только два варианта, но со временем список может расшириться.\n"
+        "🔸 В будущем эта функция исчезнет из меню — пользоваться ей придётся вручную.\n"
+        "🔸 Предложить своё сообщение можно командой /offer.\n"
+        "🔸 Всё абсолютно анонимно — никто не узнает, кто нажал.\n\n"
+        "👇 Выбери, что хочешь отправить:",
+        reply_markup=markup
+    )
   
 @bot.message_handler(commands=['offer'])
 def send_offer(message):
